@@ -1,0 +1,15 @@
+{application, ierl,
+ [
+  {description, "Erlang Jupyter frontend tool"},
+
+  {vsn, "0.1"},
+
+  {registered, []},
+
+  {applications, [kernel, stdlib, lager, jupyter]},
+
+  {included_applications, []},
+
+  {env, []}
+ ]
+}.
