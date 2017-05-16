@@ -1,0 +1,15 @@
+{application, jupyter,
+ [
+  {description, "Jupyter Kernel"},
+
+  {vsn, "0.1"},
+
+  {registered, []},
+
+  {applications, [kernel, stdlib, lager, chumak, uuid, jsx, iso8601, gproc]},
+
+  {included_applications, []},
+
+  {env, []}
+ ]
+}.
