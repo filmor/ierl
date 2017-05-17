@@ -9,3 +9,4 @@ tmp/
 rebar3
 rebar.lock
 _checkouts/
+__pycache__/
