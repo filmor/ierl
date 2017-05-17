@@ -8,3 +8,5 @@ log/
 tmp/
 rebar3
 rebar.lock
+.rebar3/
+ebin/
