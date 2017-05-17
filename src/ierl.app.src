@@ -6,7 +6,7 @@
 
   {registered, []},
 
-  {applications, [kernel, stdlib, lager, jupyter]},
+  {applications, [kernel, stdlib, lager, jupyter, getopt]},
 
   {included_applications, []},
 
