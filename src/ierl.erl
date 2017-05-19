@@ -54,7 +54,7 @@ run(ParsedArgs) ->
 
     lager:info("Starting Erlang kernel with connection file ~s", [JsonFile]),
 
-    Backend = proplists:get_value(backend, ParsedArgs),
+    Backend = list_to_atom(proplists:get_value(backend, ParsedArgs)),
 
     {ok, Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend),
 
@@ -74,7 +74,7 @@ install(Name, ParsedArgs) ->
                 LogLevel -> [<<"--log-level">>, list_to_binary(LogLevel)]
             end,
 
-    Backend = proplists:get_value(backend, ParsedArgs),
+    Backend = list_to_atom(proplists:get_value(backend, ParsedArgs)),
 
     case Backend of
         undefined ->
@@ -84,7 +84,7 @@ install(Name, ParsedArgs) ->
     end,
 
     lager:info("Building kernel spec..."),
-    Spec = ierl_kernelspec:build(list_to_atom(Backend), Extra),
+    Spec = ierl_kernelspec:build(Backend, Extra),
     lager:info("Built kernel spec, storing"),
     ierl_kernelspec:write(Name, Spec),
     lager:info("Installed kernel ~s with backend ~s", [Name, Backend]).
