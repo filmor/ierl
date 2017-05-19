@@ -48,8 +48,9 @@ init([Name, ConnData]) ->
                     ConnData#jup_conn_data.heartbeat_port
                    ),
 
-    Ref = make_ref(),
+    timer:sleep(1000),
 
+    Ref = make_ref(),
     Self = self(),
 
     {ok, #state{
@@ -59,11 +60,8 @@ init([Name, ConnData]) ->
            }
     }.
 
-handle_info({Ref, Msg}, State)
+handle_info({Ref, _Msg, LastHeartbeat}, State)
   when State#state.ref =:= Ref ->
-    LastHeartbeat = os:timestamp(),
-    lager:debug("Answering heartbeat message"),
-    chumak:send(State#state.socket, Msg),
     {noreply, State#state{last_heartbeat=LastHeartbeat}}.
 
 
@@ -86,5 +84,6 @@ terminate(_Reason, _State) ->
 do_receive(Pid, Ref, Socket) ->
     {ok, Msg} = chumak:recv(Socket),
     lager:debug("Got heartbeat message: ~p", [Msg]),
-    self() ! {Ref, Msg},
+    chumak:send(Socket, Msg),
+    Pid ! {Ref, Msg, os:timestamp()},
     do_receive(Pid, Ref, Socket).
