@@ -22,6 +22,28 @@
         ]).
 
 
+-callback init(Args :: [term()]) -> State :: term().
+
+-callback do_complete(
+            Code :: binary(), CursorPos :: integer(), State :: term()
+           ) -> #{}.
+
+-callback do_is_complete(Code :: binary()) -> #{}.
+
+% Shutdown should be handled here
+% -callback do_shutdown(Restart :: boolean()) -> #{}.
+
+% Implement Silent, History, AllowStdin in here
+-callback do_execute(Code :: binary(), UserExpressions :: map()) -> #{}.
+
+%-callback do_inspect(
+%            Code :: binary(), CursorPos :: integer(), DetailLevel :: integer(),
+%            State :: term()) -> Msg.
+
+% -callback do_history
+
+
+
 -record(state, {
           name,
           backend,

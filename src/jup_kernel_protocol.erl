@@ -11,7 +11,7 @@
 process_message(Name, Port, MsgType, Msg) ->
     do_iopub(Name, #{ status => busy }),
     % TODO: Catch and send error?
-    case do_process(Name, Port, MsgType, Msg) of
+    case do_process(Name, Port, MsgType, Msg#jup_msg.content) of
         {Status, Result} ->
             do_reply(Name, Port, Status, Result, Msg);
         Status when is_atom(Status) ->
@@ -46,7 +46,7 @@ to_reply_type(MsgType) ->
     binary:replace(MsgType, <<"request">>, <<"reply">>).
 
 
-do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
+do_process(Name, _Source, <<"kernel_info_request">>, _Msg) ->
     {ok, Version} = file:read_file(
                       filename:join(
                         [
