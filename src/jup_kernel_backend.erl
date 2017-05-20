@@ -6,6 +6,8 @@
 
 -export([
         start_link/2,
+        exec_counter/1,
+
         execute/2,
         kernel_info/1,
         is_complete/2
@@ -60,6 +62,9 @@ start_link(Name, Backend) ->
      ).
 
 
+exec_counter(Name) ->
+    do_call(Name, exec_counter).
+
 execute(Name, Something) -> do_call(Name, {execute, Something}).
 kernel_info(Name) -> do_call(Name, kernel_info).
 is_complete(Name, Code) -> do_call(Name, {is_complete, Code}).
@@ -79,6 +84,8 @@ handle_info(_Msg, State) ->
 handle_cast(_Msg, _State) ->
     error({invalid_cast, _Msg}).
 
+handle_call(exec_counter, _From, State) ->
+    {reply, State#state.exec_counter, State};
 
 handle_call({Call, Args}, From, State) ->
     Backend = State#state.backend,

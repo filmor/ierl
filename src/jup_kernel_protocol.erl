@@ -7,11 +7,12 @@
         ]).
 
 
+% TODO: do_status(Name, starting) at startup
 
 process_message(Name, Port, MsgType, Msg) ->
-    do_iopub(Name, #{ status => busy }),
+    do_status(Name, busy, Msg),
     % TODO: Catch and send error?
-    case do_process(Name, Port, MsgType, Msg#jup_msg.content) of
+    case do_process(Name, Port, MsgType, Msg) of
         {Status, Result} ->
             do_reply(Name, Port, Status, Result, Msg);
         Status when is_atom(Status) ->
@@ -19,7 +20,7 @@ process_message(Name, Port, MsgType, Msg) ->
         noreply ->
             ok
     end,
-    do_iopub(Name, #{ status => idle }).
+    do_status(Name, idle, Msg).
 
 
 do_reply(Name, Port, Status, NewMsg, Msg) ->
@@ -38,8 +39,15 @@ do_reply(Name, Port, Status, NewMsg, Msg) ->
     jup_kernel_socket:send(Name, Port, Reply).
 
 
-do_iopub(Name, Msg) ->
-    lager:info("[IOPUB ~p]: ~p", [Name, Msg]).
+do_status(Name, Status, Parent) ->
+    do_iopub(Name, status, #{ execution_state => Status }, Parent).
+
+
+do_iopub(Name, MsgType, Msg, Parent) ->
+    jup_kernel_iopub_srv:send(
+      Name,
+      jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType)
+     ).
 
 
 to_reply_type(MsgType) ->
@@ -79,11 +87,23 @@ do_process(Name, _Source, <<"kernel_info_request">>, _Msg) ->
 
 
 do_process(Name, _Source, <<"execute_request">>, Msg) ->
+    Content = Msg#jup_msg.content,
+    Code = maps:get(<<"code">>, Content),
+
+    do_iopub(
+      Name, execute_input,
+      #{
+          code => Code,
+          execution_count => jup_kernel_backend:exec_counter(Name)
+      },
+      Msg
+     ),
 
     ok;
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
+    Content = Msg#jup_msg.content,
     case jup_kernel_backend:is_complete(Name, maps:get(<<"code">>, Msg)) of
         {incomplete, Indent} ->
             {incomplete, #{ indent => Indent }};
