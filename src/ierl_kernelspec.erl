@@ -59,12 +59,25 @@ get_os() ->
 
 -spec get_user_path() -> file:filename_all().
 get_user_path() ->
-    case get_os() of
-        windows ->
-            filename:join([os:getenv("APPDATA"), "jupyter", "kernels"]);
-        darwin ->
-            "~/Library/Jupyter/kernels";
-        linux ->
-            "~/.local/share/jupyter/kernels"
-    end.
+    L = case get_os() of
+            windows ->
+                [getenv("APPDATA"), "jupyter", "kernels"];
+            darwin ->
+                [getenv("HOME"), "Library", "Jupyter", "kernels"];
+            linux ->
+                [getenv("HOME"), ".local", "share", "jupyter", "kernels"]
+        end,
 
+    filename:join(L).
+
+
+-spec getenv(string()) -> string().
+getenv(Name) when is_list(Name) ->
+    case os:getenv(Name) of
+        false ->
+            {error, {not_set, Name}};
+        [] ->
+            {error, {empty, Name}};
+        Value ->
+            Value
+    end.
