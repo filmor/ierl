@@ -3,7 +3,8 @@
 -include("internal.hrl").
 
 -export([
-         process_message/4
+         process_message/4,
+         do_iopub/4
         ]).
 
 
@@ -54,7 +55,7 @@ to_reply_type(MsgType) ->
     binary:replace(MsgType, <<"request">>, <<"reply">>).
 
 
-do_process(Name, _Source, <<"kernel_info_request">>, _Msg) ->
+do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
     {ok, Version} = file:read_file(
                       filename:join(
                         [
@@ -67,9 +68,8 @@ do_process(Name, _Source, <<"kernel_info_request">>, _Msg) ->
                      ),
 
     {KernelName, KernelVersion, KernelBanner} =
-        jup_kernel_backend:kernel_info(Name),
+        jup_kernel_backend:kernel_info(Name, Msg),
 
-    %    Build the proplist to be converted to json
     Content =
     #{
       protocol_version => <<"5.1">>,
@@ -88,7 +88,12 @@ do_process(Name, _Source, <<"kernel_info_request">>, _Msg) ->
 
 do_process(Name, _Source, <<"execute_request">>, Msg) ->
     Content = Msg#jup_msg.content,
-    Code = maps:get(<<"code">>, Content),
+    Code = case maps:get(<<"code">>, Content) of
+               <<"">> -> empty;
+               Val -> Val
+           end,
+
+    ExecCounter = jup_kernel_backend:exec_counter(Name),
 
     do_iopub(
       Name, execute_input,
@@ -99,12 +104,39 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
       Msg
      ),
 
-    ok;
+    Defaults = #{
+      <<"silent">> => false,
+      <<"store_history">> => true,
+      <<"user_expressions">> => #{},
+      <<"allow_stdin">> => true,
+      <<"stop_on_error">> => false
+     },
+
+    Merged = maps:merge(Defaults, Content),
+
+    Silent = maps:get(<<"silent">>, Merged),
+    StoreHistory = case Silent of
+                       true -> false;
+                       _ -> maps:get(<<"store_history">>, Merged)
+                   end,
+
+    % Ignored for now
+    _UserExpr = maps:get(<<"user_expressions">>, Merged),
+    _AllowStdin = maps:get(<<"allow_stdin">>, Merged),
+    _StopOnError = maps:get(<<"stop_on_error">>, Merged),
+
+    % TODO Pass on current exec_counter, such that messages can be ignored, i.e.
+    % to implement StopOnError (if error occured on ExecCounter = n => ignore
+    % all execution attempts of the same execcounter
+    jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg);
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
-    case jup_kernel_backend:is_complete(Name, maps:get(<<"code">>, Msg)) of
+    Code = maps:get(<<"code">>, Content),
+    case jup_kernel_backend:is_complete(Name, Code, Msg) of
+        not_implemented ->
+            noreply;
         {incomplete, Indent} ->
             {incomplete, #{ indent => Indent }};
         Status when is_atom(Status) ->
