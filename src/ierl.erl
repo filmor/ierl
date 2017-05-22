@@ -56,13 +56,14 @@ run(ParsedArgs) ->
 
     Backend = list_to_atom(proplists:get_value(backend, ParsedArgs)),
 
+    process_flag(trap_exit, true),
     {ok, Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend),
 
-    % TODO: Start the supervisor via application, set_env to set the options?
-    MonitorRef = monitor(process, Pid),
     receive
-        {'DOWN', MonitorRef, process, _, _} ->
-            lager:info("Kernel supervisor is down, stopping.")
+        Msg ->
+            io:format("Kernel supervisor is down, stopping. (~p)~n", [Msg]),
+            application:stop(jupyter),
+            init:stop(0)
     end.
 
 
