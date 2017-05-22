@@ -79,6 +79,7 @@ execute(Name, Code, Silent, StoreHistory, Msg) ->
 
 kernel_info(Name, Msg) -> do_call(Name, {kernel_info, Msg}).
 is_complete(Name, Code, Msg) -> do_call(Name, {is_complete, Code, Msg}).
+% complete(Name,
 
 
 init([Name, Backend]) ->
@@ -120,58 +121,72 @@ handle_call({execute, Code, Silent, StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    Res = case State#state.do_execute of
-              undefined ->
-                  not_implemented;
-              Fun ->
-                  Fun(Code, undefined, Msg, State)
-          end,
+    {Res1, State1} = case State#state.do_execute of
+                         undefined ->
+                             {not_implemented, State};
+                         Fun ->
+                             {Res, BState1} = Fun(Code, undefined, Msg,
+                                                  State#state.backend_state),
 
-    case Res of
-        {ok, Value} ->
-            jup_kernel_protocol:do_iopub(
-              State#state.name,
-              execute_result,
-              #{
-                execution_count => ExecCounter,
-                data => #{
-                  <<"text/plain">> =>
-                    list_to_binary(io_lib:format("~p", [Value]))
-                 },
-                metadata => #{}
-               },
-              Msg
-             );
-        {error, Type, Reason} ->
-            jup_kernel_protocol:do_iopub(
-              State#state.name,
-              error,
-              #{
-                execution_count => ExecCounter,
-                type => Type,
-                reason => Reason
-               },
-              Msg
-             );
-        _ ->
-            ok
-    end,
+                             {Res, State#state{backend_state=BState1}}
+                     end,
 
-    {reply, Res, State};
+    Res2 = case Res1 of
+               {ok, Value} ->
+                   jup_kernel_protocol:do_iopub(
+                     State#state.name,
+                     execute_result,
+                     #{
+                       execution_count => ExecCounter,
+                       data => #{
+                         <<"text/plain">> =>
+                         list_to_binary(io_lib:format("~p", [Value]))
+                        },
+                       metadata => #{}
+                      },
+                     Msg
+                    ),
+                   {ok, #{ execution_count => ExecCounter, payload => [],
+                           user_expressions => #{} }};
+               {error, Type, Reason, Stacktrace} ->
+                   jup_kernel_protocol:do_iopub(
+                     State#state.name,
+                     error,
+                     #{
+                       execution_count => ExecCounter,
+                       etype => Type,
+                       ename => Reason,
+                       traceback => Stacktrace
+                      },
+                     Msg
+                    ),
+                   {error, #{
+                      etype => Type,
+                      ename => Reason,
+                      traceback => Stacktrace,
+                      execution_count => ExecCounter
+                     }
+                   }
+           end,
+
+    {reply, Res2, State1};
 
 handle_call({kernel_info, _Msg}, _From, State) ->
     % TODO: Pass on to backend
     {reply, {<<"IErlang">>, <<"0.2">>, <<"Erlang kernel">>}, State};
 
 handle_call({is_complete, Code, Msg}, _From, State) ->
-    Res = case State#state.do_is_complete of
-              undefined ->
-                  not_implemented;
-              Fun ->
-                  Fun(Code, Msg, State#state.backend_state)
-          end,
+    {Res1, State1} = case State#state.do_is_complete of
+                         undefined ->
+                             {not_implemented, State};
+                         Fun ->
+                             {Res, BState1} = Fun(Code, Msg,
+                                                  State#state.backend_state),
 
-    {reply, Res, State};
+                             {Res, State#state{backend_state=BState1}}
+                     end,
+
+    {reply, Res1, State1};
 
 handle_call(_Other, _From, _State) ->
     error({invalid_call, _Other}).

@@ -25,6 +25,9 @@ process_message(Name, Port, MsgType, Msg) ->
 
 
 do_reply(Name, Port, Status, NewMsg, Msg) ->
+    lager:debug("Replying to ~p with status ~p and content ~p",
+                [Port, Status, NewMsg]),
+
     NewMsg1 = case NewMsg of
                   #jup_msg{} -> NewMsg;
                   _ -> #jup_msg{content=NewMsg}
@@ -144,6 +147,15 @@ do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
         _Else ->
             unknown
     end;
+
+
+do_process(Name, _Source, <<"shutdown_request">>, Msg) ->
+    % Ignore restart for now
+    jup_kernel_sup:stop(Name),
+    noreply;
+
+%do_complete(Name, _Source, <<"complete_request">>, Msg) ->
+%    Content = Msg#jup_msg.content,
 
 
 % TODO:
