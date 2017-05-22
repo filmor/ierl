@@ -83,7 +83,7 @@ terminate(_Reason, _State) ->
 
 do_receive(Pid, Ref, Socket) ->
     {ok, Msg} = chumak:recv(Socket),
-    lager:debug("Got heartbeat message: ~p", [Msg]),
+    % lager:debug("Got heartbeat message: ~p", [Msg]),
     chumak:send(Socket, Msg),
     Pid ! {Ref, Msg, os:timestamp()},
     do_receive(Pid, Ref, Socket).
