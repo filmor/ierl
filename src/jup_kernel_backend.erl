@@ -10,7 +10,8 @@
 
         execute/5,
         kernel_info/2,
-        is_complete/3
+        is_complete/3,
+        complete/4
        ]).
 
 
@@ -79,7 +80,8 @@ execute(Name, Code, Silent, StoreHistory, Msg) ->
 
 kernel_info(Name, Msg) -> do_call(Name, {kernel_info, Msg}).
 is_complete(Name, Code, Msg) -> do_call(Name, {is_complete, Code, Msg}).
-% complete(Name,
+complete(Name, Code, CursorPos, Msg) -> do_call(Name, {complete, Code,
+                                                       CursorPos, Msg}).
 
 
 init([Name, Backend]) ->
@@ -186,7 +188,43 @@ handle_call({is_complete, Code, Msg}, _From, State) ->
                              {Res, State#state{backend_state=BState1}}
                      end,
 
-    {reply, Res1, State1};
+    Res2 = case Res1 of
+               incomplete ->
+                   {incomplete, #{ indent => <<"...">> }};
+               {incomplete, Indent} ->
+                   {incomplete, Indent};
+               not_implemented ->
+                   noreply;
+               Value ->
+                   Value
+           end,
+
+    {reply, Res2, State1};
+
+handle_call({complete, Code, CursorPos, Msg}, _From, State) ->
+    {Res1, State1} = case State#state.do_complete of
+                         undefined ->
+                             {not_implemented, State};
+                         Fun ->
+                             {Res, BState1} = Fun(Code, CursorPos, Msg,
+                                                  State#state.backend_state),
+
+                             {Res, State#state{backend_state=BState1}}
+                     end,
+
+    Res2 = case Res1 of
+               L when is_list(L) ->
+                   {ok, #{
+                      cursor_start => CursorPos, cursor_end => CursorPos,
+                      matches => L,
+                      metadata => #{}
+                     }};
+               _ ->
+                   noreply
+           end,
+
+    {reply, Res2, State1};
+
 
 handle_call(_Other, _From, _State) ->
     error({invalid_call, _Other}).

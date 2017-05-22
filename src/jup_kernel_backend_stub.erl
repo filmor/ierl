@@ -6,7 +6,8 @@
 -export([
          init/1,
          do_execute/4,
-         do_is_complete/3
+         do_is_complete/3,
+         do_complete/4
         ]).
 
 
@@ -37,8 +38,19 @@ do_execute(Code, _Publish, _Msg, State) ->
     {Res, State}.
 
 
-% do_complete(Code
-% use edlin_expand:expand(lists:reverse(binary_to_list(Code)))
+do_complete(Code, CursorPos, _Msg, State) ->
+    L = lists:sublist(binary_to_list(Code), CursorPos),
+    Res = case edlin_expand:expand(lists:reverse(L)) of
+              {yes, Expansion, []} ->
+                  [Expansion];
+              {yes, [], Matches} ->
+                  Matches;
+              {no, [], Matches} ->
+                  [Name || {Name, _Arity} <- Matches]
+          end,
+
+    {[list_to_binary(R) || R <- Res], State}.
+
 
 do_is_complete(Code, _Msg, State) ->
     Res = case erl_scan:string(binary_to_list(Code)) of
@@ -62,7 +74,7 @@ check_is_complete([], []) ->
     complete;
 
 check_is_complete([], _List) ->
-    incomplete;
+    {incomplete, <<"...">>};
 
 check_is_complete([{Token, _}|Tail], [Token|Stack]) ->
     check_is_complete(Tail, Stack);

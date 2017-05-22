@@ -96,8 +96,6 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
                Val -> Val
            end,
 
-    ExecCounter = jup_kernel_backend:exec_counter(Name),
-
     do_iopub(
       Name, execute_input,
       #{
@@ -137,25 +135,22 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
     Code = maps:get(<<"code">>, Content),
-    case jup_kernel_backend:is_complete(Name, Code, Msg) of
-        not_implemented ->
-            noreply;
-        {incomplete, Indent} ->
-            {incomplete, #{ indent => Indent }};
-        Status when is_atom(Status) ->
-            Status;
-        _Else ->
-            unknown
-    end;
+    jup_kernel_backend:is_complete(Name, Code, Msg);
 
 
-do_process(Name, _Source, <<"shutdown_request">>, Msg) ->
+do_process(Name, _Source, <<"shutdown_request">>, _Msg) ->
     % Ignore restart for now
     jup_kernel_sup:stop(Name),
     noreply;
 
-%do_complete(Name, _Source, <<"complete_request">>, Msg) ->
-%    Content = Msg#jup_msg.content,
+
+do_process(Name, _Source, <<"complete_request">>, Msg) ->
+    Content = Msg#jup_msg.content,
+
+    Code = maps:get(<<"code">>, Content),
+    CursorPos = maps:get(<<"cursor_pos">>, Content),
+
+    jup_kernel_backend:complete(Name, Code, CursorPos, Msg);
 
 
 % TODO:
