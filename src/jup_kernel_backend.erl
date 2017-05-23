@@ -157,15 +157,15 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                      error,
                      #{
                        execution_count => ExecCounter,
-                       etype => Type,
-                       ename => Reason,
+                       ename => Type,
+                       evalue => Reason,
                        traceback => Stacktrace
                       },
                      Msg
                     ),
                    {error, #{
-                      etype => Type,
-                      ename => Reason,
+                      ename => Type,
+                      evalue => Reason,
                       traceback => Stacktrace,
                       execution_count => ExecCounter
                      }
@@ -193,7 +193,7 @@ handle_call({is_complete, Code, Msg}, _From, State) ->
                incomplete ->
                    {incomplete, #{ indent => <<"...">> }};
                {incomplete, Indent} ->
-                   {incomplete, Indent};
+                   {incomplete, #{ indent => Indent }};
                not_implemented ->
                    noreply;
                Value ->

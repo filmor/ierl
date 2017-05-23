@@ -49,7 +49,7 @@ do_complete(Code, CursorPos, _Msg, State) ->
               {yes, Expansion, []} ->
                   [Expansion];
               {yes, [], Matches} ->
-                  Matches;
+                  [Name || {Name, _Arity} <- Matches];
               {no, [], Matches} ->
                   [Name || {Name, _Arity} <- Matches]
           end,
