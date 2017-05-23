@@ -47,11 +47,6 @@ init([Name, ConnData, Backend]) ->
       #{},
       [
        #{
-         id => backend,
-         start => {jup_kernel_backend, start_link, [Name, Backend]}
-       },
-
-       #{
          id => heartbeat,
          start => {jup_kernel_heartbeat_srv, start_link, [Name, ConnData]}
        },
@@ -64,7 +59,14 @@ init([Name, ConnData, Backend]) ->
          start => {jup_kernel_iopub_srv, start_link, [Name, ConnData]}
        },
 
-       Socket(stdin, router, ConnData#jup_conn_data.stdin_port)
+       Socket(stdin, router, ConnData#jup_conn_data.stdin_port),
+
+       #{ id => io, start => {jup_kernel_io, start_link, [Name]}},
+
+       #{
+         id => backend,
+         start => {jup_kernel_backend, start_link, [Name, Backend]}
+       }
       ]
      }
     }.

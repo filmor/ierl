@@ -85,6 +85,8 @@ complete(Name, Code, CursorPos, Msg) -> do_call(Name, {complete, Code,
 
 
 init([Name, Backend]) ->
+    jup_kernel_io:set_group_leader(Name),
+
     Get = fun(FName, Arity) ->
                   case erlang:function_exported(Backend, FName, Arity) of
                       true ->
@@ -116,6 +118,8 @@ handle_call(exec_counter, _From, State) ->
     {reply, State#state.exec_counter, State};
 
 handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
+    io:setopts([{jup_msg, Msg}]),
+
     ExecCounter = case Silent of
                       true ->
                           State#state.exec_counter;
