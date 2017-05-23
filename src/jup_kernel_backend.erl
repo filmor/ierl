@@ -115,7 +115,7 @@ handle_cast(_Msg, _State) ->
 handle_call(exec_counter, _From, State) ->
     {reply, State#state.exec_counter, State};
 
-handle_call({execute, Code, Silent, StoreHistory, Msg}, _From, State) ->
+handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
     ExecCounter = case Silent of
                       true ->
                           State#state.exec_counter;
@@ -130,7 +130,8 @@ handle_call({execute, Code, Silent, StoreHistory, Msg}, _From, State) ->
                              {Res, BState1} = Fun(Code, undefined, Msg,
                                                   State#state.backend_state),
 
-                             {Res, State#state{backend_state=BState1}}
+                             {Res, State#state{exec_counter=ExecCounter,
+                                               backend_state=BState1}}
                      end,
 
     Res2 = case Res1 of

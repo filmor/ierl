@@ -23,19 +23,24 @@ init(_Args) ->
 
 
 do_execute(Code, _Publish, _Msg, State) ->
-    Res = try
-              {ok, evaluate(binary_to_list(Code))}
-          catch
-              Type:Reason ->
-                  lager:error("Error: ~p:~p", [Type, Reason]),
-                  Stacktrace = [
-                                list_to_binary(io_lib:format("~p", [Item])) ||
-                                Item <- erlang:get_stacktrace()
-                               ],
-                  {error, Type, Reason, Stacktrace}
-          end,
+    try
+        {Value, Bindings} = evaluate(binary_to_list(Code),
+                                     State#state.bindings),
 
-    {Res, State}.
+        {{ok, Value}, State#state{bindings=Bindings}}
+    catch
+        Type:Reason ->
+            lager:error("Error: ~p:~p", [Type, Reason]),
+            Stacktrace = [
+                          list_to_binary(io_lib:format("~p", [Item])) ||
+                          Item <- erlang:get_stacktrace()
+                         ],
+            Reason1 = list_to_binary(
+                        io_lib:format("~p", [Reason])
+                       ),
+
+            {{error, Type, Reason1, Stacktrace}, State}
+    end.
 
 
 do_complete(Code, CursorPos, _Msg, State) ->
@@ -63,11 +68,11 @@ do_is_complete(Code, _Msg, State) ->
     {Res, State}.
 
 
-evaluate(Expression) ->
+evaluate(Expression, Bindings) ->
     {ok, Tokens, _} = erl_scan:string(Expression),
     {ok, Parsed} = erl_parse:parse_exprs(Tokens),
-    {value, Result, _} = erl_eval:exprs(Parsed, []),
-    Result.
+    {value, Result, Bindings1} = erl_eval:exprs(Parsed, Bindings),
+    {Result, Bindings1}.
 
 
 check_is_complete([], []) ->
