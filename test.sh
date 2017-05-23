@@ -1,3 +1,3 @@
 #!/bin/sh
 
-escript rebar3 escriptize && nosetests
+escript rebar3 compile && nosetests

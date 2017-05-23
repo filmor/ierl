@@ -12,15 +12,25 @@ class IErlangKernelTests(jkt.KernelTests):
 
     completion_samples = [
         {
-            'text': 'lists:',
-            'matches': {'lists:split('},
+            'text': 'lists:s',
+            'matches': {
+                'split',
+                'sublist',
+                'sort',
+                'subtract',
+                'splitwith',
+                'sum',
+                'suffix',
+                'seq',
+            },
         },
     ]
 
     complete_code_samples = [
         '1.',
         'io:format("asdf").',
-        "Func = fun (X) -> X * X end.",
+        "Func = fun (X) -> X * X end, Func(2).",
+        "lists:reverse([1,2,3]).",
     ]
 
     incomplete_code_samples = ["io:format(", "Func = fun () ->"]
