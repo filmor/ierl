@@ -79,7 +79,7 @@ check_is_complete([], []) ->
     complete;
 
 check_is_complete([], _List) ->
-    {incomplete, <<"...">>};
+    {incomplete, <<"   ">>};
 
 check_is_complete([{Token, _}|Tail], [Token|Stack]) ->
     check_is_complete(Tail, Stack);
