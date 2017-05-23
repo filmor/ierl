@@ -191,7 +191,7 @@ handle_call({is_complete, Code, Msg}, _From, State) ->
 
     Res2 = case Res1 of
                incomplete ->
-                   {incomplete, #{ indent => <<"...">> }};
+                   {incomplete, #{ indent => <<"  ">> }};
                {incomplete, Indent} ->
                    {incomplete, #{ indent => Indent }};
                not_implemented ->
