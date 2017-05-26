@@ -28,10 +28,23 @@
 -callback init(Args :: [term()]) -> State :: term().
 
 -callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
-                     State::term()) -> #{}.
+                     State::term())
+    -> {
+         {ok, Value :: term()}
+       | {error, Type :: atom(), Reason :: atom(), StackTrace :: [binary()]},
+        State :: term()
+       }.
+
 -callback do_complete(Code::binary(), CursorPos::integer(), Msg::#jup_msg{},
-                      State::term()) -> #{}.
--callback do_is_complete(Code::binary(), Msg::#jup_msg{}, State::term()) -> #{}.
+                      State::term())
+    -> {[binary()], State :: term()}.
+
+-callback do_is_complete(Code::binary(), Msg::#jup_msg{}, State::term())
+    -> {
+         complete | invalid | {incomplete, binary()} | incomplete | unknown,
+         State :: term()
+       }.
+
 -callback do_inspect(Code::binary(), CursorPos::integer(),
                      DetailLevel::integer(), Msg::#jup_msg{}, State::term()) ->
     #{}.
