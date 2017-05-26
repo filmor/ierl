@@ -6,7 +6,7 @@
         ]).
 
 
--spec write(file:filename_all(), map()) -> ok.
+-spec write(file:filename_all(), map()) -> map().
 write(Name, FileMap) ->
     Root = filename:join([get_user_path(), Name]),
 
@@ -45,7 +45,7 @@ build(ScriptPath, Backend, Args) ->
     }.
 
 
--spec get_os() -> {windows, darwin, linux}.
+-spec get_os() -> windows | darwin | linux.
 get_os() ->
     case os:type() of
         {win32, _} ->
