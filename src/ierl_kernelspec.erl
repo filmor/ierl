@@ -6,6 +6,10 @@
         ]).
 
 
+% TODO:
+%  - Allow installing the escript into the kernel directory
+
+
 -spec write(file:filename_all(), map()) -> map().
 write(Name, FileMap) ->
     Root = filename:join([get_user_path(), Name]),
@@ -33,10 +37,13 @@ build(Backend, Args) ->
 build(ScriptPath, Backend, Args) ->
     Spec = #{
       argv => [
-               escript, list_to_binary(ScriptPath), <<"-f">>,
-               <<"{connection_file}">>, <<"-b">>, Backend
+               escript, list_to_binary(ScriptPath),
+               Backend,
+               <<"run">>, <<"-f">>, <<"{connection_file}">>
               ] ++ Args,
+      % TODO Generate display_name from the module
       display_name => Backend,
+      % TODO Get from module
       language => <<"erlang">>
     },
 

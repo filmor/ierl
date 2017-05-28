@@ -7,13 +7,21 @@
          init/1,
          do_execute/4,
          do_is_complete/3,
-         do_complete/4
+         do_complete/4,
+         opt_spec/0
         ]).
 
 
 -record(state, {
           bindings
          }).
+
+
+opt_spec() ->
+    {
+     "Simple Erlang backend",
+     []
+    }.
 
 
 init(_Args) ->
