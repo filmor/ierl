@@ -27,6 +27,7 @@
 
 -callback init(Args :: [term()]) -> State :: term().
 
+
 -callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
                      State::term())
     -> {
@@ -35,9 +36,11 @@
         State :: term()
        }.
 
+
 -callback do_complete(Code::binary(), CursorPos::integer(), Msg::#jup_msg{},
                       State::term())
     -> {[binary()], State :: term()}.
+
 
 -callback do_is_complete(Code::binary(), Msg::#jup_msg{}, State::term())
     -> {
@@ -45,14 +48,20 @@
          State :: term()
        }.
 
+
 -callback do_inspect(Code::binary(), CursorPos::integer(),
                      DetailLevel::integer(), Msg::#jup_msg{}, State::term()) ->
     #{}.
 
+
+-callback opt_spec() -> [getopt:option_spec()].
+
+
 -optional_callbacks([
                      do_complete/4,
                      do_is_complete/3,
-                     do_inspect/5
+                     do_inspect/5,
+                     opt_spec/0
                     ]).
 
 % Shutdown should be handled here
@@ -80,6 +89,7 @@
 
 -spec start_link(Name :: atom(), Backend :: module()) -> {ok, pid()}.
 start_link(Name, Backend) ->
+    {module, _} = code:ensure_loaded(Backend),
     gen_server:start_link(
       ?JUP_VIA(Name, backend), ?MODULE, [Name, Backend], []
      ).
