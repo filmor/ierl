@@ -3,7 +3,10 @@
 -export([
          split_at_delim/2,
          ensure_binary/1,
-         hexlify/1
+         hexlify/1,
+
+         call_if_exported/3,
+         call_if_exported/4
         ]).
 
 
@@ -38,3 +41,18 @@ hexlify(Bin) when is_binary(Bin) ->
 
 hex(C) when C < 10 -> $0 + C;
 hex(C) -> $a + C - 10.
+
+
+-spec call_if_exported(module(), atom(), list()) -> term().
+call_if_exported(Module, Func, Args) ->
+    call_if_exported(Module, Func, Args, undefined).
+
+
+-spec call_if_exported(module(), atom(), list(), term()) -> term().
+call_if_exported(Module, Func, Args, Default) ->
+    case erlang:function_exported(Module, Func, length(Args)) of
+        true ->
+            Module:Func(Args);
+        _ ->
+            Default
+    end.

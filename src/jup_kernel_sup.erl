@@ -5,7 +5,7 @@
 -include("internal.hrl").
 
 -export([
-         start_link/3,
+         start_link/4,
          stop/1,
          init/1
         ]).
@@ -13,16 +13,17 @@
 
 -spec start_link(Name :: term(),
                  FileNameOrData :: #jup_conn_data{} | binary(),
-                 Backend :: atom())
+                 Backend :: atom(),
+                 Args :: map())
     -> {ok, pid()}.
 
-start_link(Name, ConnData = #jup_conn_data{}, Backend) ->
+start_link(Name, ConnData = #jup_conn_data{}, Backend, Args) ->
     supervisor:start_link(
-      ?JUP_VIA(Name, kernel_sup), ?MODULE, [Name, ConnData, Backend]
+      ?JUP_VIA(Name, kernel_sup), ?MODULE, [Name, ConnData, Backend, Args]
      );
 
-start_link(Name, FileName, Backend) ->
-    start_link(Name, jup_connection_file:parse(FileName), Backend).
+start_link(Name, FileName, Backend, Args) ->
+    start_link(Name, jup_connection_file:parse(FileName), Backend, Args).
 
 
 -spec stop(Name :: term()) -> ok.
@@ -33,14 +34,18 @@ stop(Name) ->
 -spec init([term()]) ->
     {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 
-init([Name, ConnData, Backend]) ->
+init([Name, ConnData, Backend, Args]) ->
     Socket = fun (PortName, Kind, Port) ->
-                     Args = [Name, PortName, Kind, Port, ConnData],
+                     A = [Name, PortName, Kind, Port, ConnData],
                      #{
                         id => PortName,
-                        start => {jup_kernel_socket, start_link, Args}
+                        start => {jup_kernel_socket, start_link, A}
                      }
              end,
+
+
+    Node = maps:get(node, Args, node()),
+    BArgs = maps:get(backend_args, Args, #{}),
 
     {ok,
      {
@@ -65,7 +70,7 @@ init([Name, ConnData, Backend]) ->
 
        #{
          id => backend,
-         start => {jup_kernel_backend, start_link, [Name, Backend]}
+         start => {jup_kernel_backend, start_link, [Name, Node, Backend, BArgs]}
        }
       ]
      }

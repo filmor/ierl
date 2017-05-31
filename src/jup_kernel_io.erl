@@ -4,7 +4,7 @@
 
 -export([
          start_link/1,
-         set_group_leader/1
+         get_pid/1
         ]).
 
 
@@ -29,10 +29,9 @@ start_link(Name) ->
     gen_server:start_link(?JUP_VIA(Name, io), ?MODULE, [Name], []).
 
 
--spec set_group_leader(atom()) -> ok.
-set_group_leader(Name) ->
-    Pid = gproc:where(?JUP_NAME(Name, io)),
-    erlang:group_leader(Pid, self()).
+-spec get_pid(Name :: atom()) -> pid().
+get_pid(Name) ->
+    gproc:where(?JUP_NAME(Name, io)).
 
 
 init([Name]) ->

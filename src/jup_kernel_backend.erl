@@ -5,7 +5,7 @@
 -include("internal.hrl").
 
 -export([
-        start_link/2,
+        start_link/4,
         exec_counter/1,
 
         execute/5,
@@ -76,6 +76,7 @@
 
 -record(state, {
           name,
+          node,
           backend,
           backend_state,
           pending_replies = #{},
@@ -87,11 +88,11 @@
          }).
 
 
--spec start_link(Name :: atom(), Backend :: module()) -> {ok, pid()}.
-start_link(Name, Backend) ->
+-spec start_link(atom(), atom(), module(), list()) -> {ok, pid()}.
+start_link(Name, Node, Backend, BackendArgs) ->
     {module, _} = code:ensure_loaded(Backend),
     gen_server:start_link(
-      ?JUP_VIA(Name, backend), ?MODULE, [Name, Backend], []
+      ?JUP_VIA(Name, backend), ?MODULE, [Name, Node, Backend, BackendArgs], []
      ).
 
 
@@ -107,29 +108,79 @@ complete(Name, Code, CursorPos, Msg) -> do_call(Name, {complete, Code,
                                                        CursorPos, Msg}).
 
 
-init([Name, Backend]) ->
-    jup_kernel_io:set_group_leader(Name),
+init([Name, Node, Backend, BackendArgs]) ->
+    State =
+    case Node =:= node() of
+        true ->
+            init_local_state(Name, Backend, BackendArgs);
+        _ ->
+            init_remote_state(Name, Node, Backend, BackendArgs)
+    end,
 
-    Get = fun(FName, Arity) ->
-                  case erlang:function_exported(Backend, FName, Arity) of
-                      true ->
-                          fun Backend:FName/Arity;
-                      _ ->
-                          undefined
-                  end
-          end,
+    {ok, State}.
 
-    {ok, #state{
-            name=Name,
-            backend=Backend,
-            backend_state=Backend:init([]), % TODO: BackendArgs
 
-            do_execute=Get(do_execute, 4),
-            do_complete=Get(do_complete, 4),
-            do_inspect=Get(do_inspect, 5),
-            do_is_complete=Get(do_is_complete, 3)
-           }
-    }.
+init_local_state(Name, Backend, BackendArgs) ->
+    Get =
+    fun(FName, Arity) ->
+            case erlang:function_exported(Backend, FName, Arity) of
+                true ->
+                    fun (Args) when length(Args) =:= Arity ->
+                            erlang:apply(Backend, FName, Args)
+                    end;
+                _ ->
+                    undefined
+            end
+    end,
+
+    erlang:group_leader(jup_kernel_io:get_pid(Name), self()),
+
+    #state{
+       name=Name,
+       node=node(),
+       backend=Backend,
+       backend_state=Backend:init(BackendArgs),
+
+       do_execute=Get(do_execute, 4),
+       do_complete=Get(do_complete, 4),
+       do_inspect=Get(do_inspect, 5),
+       do_is_complete=Get(do_is_complete, 3)
+      }.
+
+
+init_remote_state(Name, Node, Backend, BackendArgs) ->
+    RemotePid = jup_kernel_remote:start_link(Name, Node, Backend, BackendArgs),
+
+    Get =
+    fun (FName, Arity) ->
+            case erlang:function_exported(Backend, FName, Arity) of
+                true ->
+                    fun (Args) when length(Args) =:= Arity ->
+                            Ref = make_ref(),
+                            RemotePid ! {call, Ref, FName,
+                                         lists:droplast(Args)},
+                            receive
+                                {Ref, Result} ->
+                                    Result
+                            end
+                    end;
+                _ ->
+                    undefined
+            end
+    end,
+
+    #state{
+       name=Name,
+       node=Node,
+       backend=Backend,
+       backend_state=RemotePid,
+
+       do_execute=Get(do_execute, 4),
+       do_complete=Get(do_complete, 4),
+       do_inspect=Get(do_inspect, 5),
+       do_is_complete=Get(do_is_complete, 3)
+      }.
+
 
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -154,8 +205,8 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                          undefined ->
                              {not_implemented, State};
                          Fun ->
-                             {Res, BState1} = Fun(Code, undefined, Msg,
-                                                  State#state.backend_state),
+                             {Res, BState1} = Fun([Code, undefined, Msg,
+                                                   State#state.backend_state]),
 
                              {Res, State#state{exec_counter=ExecCounter,
                                                backend_state=BState1}}
@@ -210,8 +261,8 @@ handle_call({is_complete, Code, Msg}, _From, State) ->
                          undefined ->
                              {not_implemented, State};
                          Fun ->
-                             {Res, BState1} = Fun(Code, Msg,
-                                                  State#state.backend_state),
+                             {Res, BState1} = Fun([Code, Msg,
+                                                   State#state.backend_state]),
 
                              {Res, State#state{backend_state=BState1}}
                      end,
@@ -234,8 +285,8 @@ handle_call({complete, Code, CursorPos, Msg}, _From, State) ->
                          undefined ->
                              {not_implemented, State};
                          Fun ->
-                             {Res, BState1} = Fun(Code, CursorPos, Msg,
-                                                  State#state.backend_state),
+                             {Res, BState1} = Fun([Code, CursorPos, Msg,
+                                                   State#state.backend_state]),
 
                              {Res, State#state{backend_state=BState1}}
                      end,
