@@ -28,7 +28,6 @@ get_opts(Mod) ->
                 {Usage, Specs} ->
                     {Usage, Specs};
                 Specs ->
-                    io:format("~p~n", [Specs]),
                     {"", Specs}
             end;
         _ ->
@@ -38,7 +37,6 @@ get_opts(Mod) ->
 
 do_list(Header, Map) ->
     io:format("~s:~n~n", [Header]),
-    Names = maps:keys(Map),
     Lines = lists:sort(
               maps:fold(
                 fun (K, V, Res) ->
@@ -78,33 +76,46 @@ main(["--help"]) ->
 main(["help"]) ->
     Cmd = filename:basename(escript:script_name()),
     io:format("Usage: ~s <backend> <cmd>~n~n", [Cmd]),
-    list_backends(),
-    list_commands();
+    list_commands(),
+    list_backends();
 
-
-main([Backend | Rest]) ->
-    BAtom = list_to_atom(Backend),
-    case maps:find(BAtom, backends()) of
-        {ok, Module} ->
-            main({BAtom, Module}, Rest);
-        _ ->
-            main(["help"])
-    end.
-
-
-main(Backend, [Command | Rest]) ->
+main([Command | Rest]) ->
     CmdAtom = list_to_atom(Command),
     case maps:find(CmdAtom, commands()) of
         {ok, Module} ->
-            main(Backend, {CmdAtom, Module}, Rest);
+            main({CmdAtom, Module}, Rest);
         _ ->
             main(["help"])
     end.
 
 
-main({BAtom, Backend}, {CmdAtom, Command}, Rest) ->
+main(Command, []) ->
+    main(Command, ["erlang"]);
+
+main(Command, [Backend | Rest]) ->
+    {BAtom, Rest1} = case Backend of
+                         [$-|_] ->
+                             % Fall back to "erlang" as the default backend
+                             {erlang, [Backend | Rest]};
+                         _ ->
+                             {list_to_atom(Backend), Rest}
+                     end,
+
+    case maps:find(BAtom, backends()) of
+        {ok, Module} ->
+            main(Command, {BAtom, Module}, Rest1);
+        _ ->
+            main(["help"])
+    end.
+
+
+main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
+    % TODO Replace lager for normal commands, only use it for the actual kernel
+    {ok, _} = application:ensure_all_started(lager),
+    lager:set_loglevel(lager_console_backend, info),
+
     {_, Spec} = get_opts(Command),
-    {_, BSpec} = get_opts(Backend),
+    {_, _BSpec} = get_opts(Backend),
 
     Spec1 = [{help, $h, "help", boolean, "This help text"}|Spec],
 

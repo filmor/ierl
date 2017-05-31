@@ -11,7 +11,8 @@ opt_spec() ->
      "Start a kernel for the given connection file",
      [
       {conn_file, $f, "conn-file", string, "Connection file provided by"
-                                           " Jupyter"}
+                                           " Jupyter"},
+      {node, undefined, "node", string, "Node to run this kernel on"}
      ]
     }.
 
@@ -25,10 +26,20 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
         _ -> ok
     end,
 
-    lager:info("Starting Erlang kernel with connection file ~s", [JsonFile]),
+    Node = case proplists:get_value(node, ParsedArgs, undefined) of
+               undefined ->
+                   node();
+               Val ->
+                   list_to_atom(Val)
+           end,
+
+    lager:info("Starting Erlang kernel with connection file ~s against ~p",
+               [JsonFile, Node]),
 
     process_flag(trap_exit, true),
-    {ok, Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend),
+    % TODO Parse rest of the args
+    Args = #{ node => Node },
+    {ok, Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend, Args),
 
     receive
         Msg ->

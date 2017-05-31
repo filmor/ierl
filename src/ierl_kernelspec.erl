@@ -17,10 +17,15 @@ write(Name, FileMap) ->
     lager:info("Writing kernelspec for ~s to ~s...", [Name, Root]),
 
     maps:map(
-      fun (Fn, Data) ->
+      fun (Fn, {copy, Other}) ->
               Path = filename:join([Root, Fn]),
               ok = filelib:ensure_dir(Path),
-              lager:debug("Writing file ~s to ~s...", [Fn, Path]),
+              lager:info("Copying file ~s to ~s...", [Fn, Path]),
+              file:copy(Other, Path);
+          (Fn, Data) ->
+              Path = filename:join([Root, Fn]),
+              ok = filelib:ensure_dir(Path),
+              lager:info("Writing file ~s to ~s...", [Fn, Path]),
 
               ok = file:write_file(Path, Data)
       end,
@@ -28,26 +33,48 @@ write(Name, FileMap) ->
      ).
 
 
--spec build(module(), list()) -> map().
-build(Backend, Args) ->
-    build(filename:absname(escript:script_name()), Backend, Args).
+-spec build(module(), map()) -> map().
+build(Backend, Options) ->
+    build(filename:absname(escript:script_name()), Backend, Options).
 
 
--spec build(file:filename_all(), module(), list()) -> map().
-build(ScriptPath, Backend, Args) ->
+-spec build(file:filename_all(), module(), map()) -> map().
+build(ScriptPath, Backend, Options) ->
+    Root = filename:join([get_user_path(), Backend]),
+
+    Args = case maps:find(args, Options) of
+               % TODO Process Args
+               {ok, Value} -> Value;
+               _ -> []
+           end,
+
+    {Files, ScriptPath1} =
+    case maps:get(copy, Options, false) of
+        true ->
+            NewScriptPath = filename:join([Root, "kernel.escript"]),
+            { #{ NewScriptPath => {copy, ScriptPath} }, NewScriptPath};
+        _Val ->
+            lager:info("Copy val: ~p", [_Val]),
+            {#{}, ScriptPath}
+    end,
+
+    Argv = [
+            path_to_binary(get_escript_bin()),
+            path_to_binary(ScriptPath1),
+            <<"run">>,
+            Backend,
+            <<"-f">>, <<"{connection_file}">>
+           ] ++ Args,
+
     Spec = #{
-      argv => [
-               escript, list_to_binary(ScriptPath),
-               Backend,
-               <<"run">>, <<"-f">>, <<"{connection_file}">>
-              ] ++ Args,
+      argv => Argv,
       % TODO Generate display_name from the module
       display_name => Backend,
       % TODO Get from module
       language => <<"erlang">>
     },
 
-    #{
+    Files#{
       <<"kernel.json">> => jsx:encode(Spec, [{space, 1}, {indent, 2}])
     }.
 
@@ -88,3 +115,16 @@ getenv(Name) when is_list(Name) ->
         Value ->
             Value
     end.
+
+
+-spec get_escript_bin() -> file:filename_all().
+get_escript_bin() ->
+    {ok, [[Root]]} = init:get_argument(root),
+    filename:join([Root, "bin", "escript"]).
+
+
+-spec path_to_binary(file:filename_all()) -> binary().
+path_to_binary(Fn) when is_binary(Fn) ->
+    filename:flatten(Fn);
+path_to_binary(Fn) ->
+    list_to_binary(filename:flatten(Fn)).
