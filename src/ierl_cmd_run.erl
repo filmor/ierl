@@ -12,7 +12,10 @@ opt_spec() ->
      [
       {conn_file, $f, "conn-file", string, "Connection file provided by"
                                            " Jupyter"},
-      {node, undefined, "node", string, "Node to run this kernel on"}
+      {node, undefined, "node", string, "Node to run this kernel on"},
+      {sname, undefined, "sname", string, "Short name for this node "
+       "(defaults to the backend name"},
+      {cookie, undefined, "cookie", string, "Cookie"}
      ]
     }.
 
@@ -32,6 +35,23 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
                Val ->
                    list_to_atom(Val)
            end,
+
+    SName = proplists:get_value(sname, ParsedArgs, atom_to_list(BName)),
+
+    SName1 = binary_to_atom(
+               list_to_binary(
+                 [SName, "_", base64:encode(crypto:strong_rand_bytes(6))]
+                ),
+               utf8
+              ),
+
+    net_kernel:start([SName1, shortnames]),
+    lager:info("Set node name to ~p", [SName1]),
+
+    case proplists:get_value(cookie, ParsedArgs, undefined) of
+        undefined -> ok;
+        Val1 -> erlang:setcookie(node(), list_to_atom(Val1))
+    end,
 
     lager:info("Starting Erlang kernel with connection file ~s against ~p",
                [JsonFile, Node]),
