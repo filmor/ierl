@@ -13,7 +13,8 @@
 
 
 -record(state, {
-          bindings
+          bindings,
+          modules
          }).
 
 
@@ -32,10 +33,8 @@ init(_Args) ->
 
 do_execute(Code, _Publish, _Msg, State) ->
     try
-        {Value, Bindings} = evaluate(binary_to_list(Code),
-                                     State#state.bindings),
-
-        {{ok, Value}, State#state{bindings=Bindings}}
+        {Value, State1} = evaluate(binary_to_list(Code), State),
+        {{ok, Value}, State1}
     catch
         Type:Reason ->
             lager:error("Error: ~p:~p", [Type, Reason]),
@@ -66,6 +65,8 @@ do_complete(Code, CursorPos, _Msg, State) ->
 
 
 do_is_complete(Code, _Msg, State) ->
+    % TODO: Check if module is complete by looking for two empty lines at the
+    % end?
     Res = case erl_scan:string(binary_to_list(Code)) of
               {ok, Tokens, _} ->
                   check_is_complete(Tokens, [dot]);
@@ -76,18 +77,70 @@ do_is_complete(Code, _Msg, State) ->
     {Res, State}.
 
 
-evaluate(Expression, Bindings) ->
+evaluate(Expression, State) ->
     {ok, Tokens, _} = erl_scan:string(Expression),
-    {ok, Parsed} = erl_parse:parse_exprs(Tokens),
-    {value, Result, Bindings1} = erl_eval:exprs(Parsed, Bindings),
-    {Result, Bindings1}.
+
+    case is_module(Tokens) of
+        false ->
+            {ok, Parsed} = erl_parse:parse_exprs(Tokens),
+            {value, Result, Bindings1} = erl_eval:exprs(Parsed,
+                                                        State#state.bindings),
+            {Result, State#state{bindings=Bindings1}};
+        ModuleName ->
+            {compile_module(ModuleName, Tokens, State), State}
+    end.
+
+
+compile_module(ModuleName, Tokens, State) ->
+    % TODO: Test that the module can currently not be loaded or has been loaded
+    % through this mechanism before.
+    FormGroups = lists:foldr(
+                   fun ({dot, _} = Token, Acc) ->
+                           [[Token] | Acc];
+                       (Token, [H | T]) ->
+                           [[Token | H] | T]
+                   end,
+                   [],
+                   Tokens
+                  ),
+
+    ParseRes = [erl_parse:parse_form(Tokens1) || Tokens1 <- FormGroups],
+
+    Errors = [Err || {error, Err} <- ParseRes],
+
+    case Errors of
+        [] ->
+            Forms = [Form || {ok, Form} <- ParseRes],
+
+            case compile:forms(Forms) of
+                {ok, ModuleName, Code} ->
+                    % TODO: Filename = "jupyter_{name}_{execution_count}"
+                    {module, _} = code:load_binary(ModuleName, "jupyter", Code);
+                Res ->
+                    Res
+            end;
+
+        Errors ->
+            {error, Errors}
+    end.
+
+
+% Checks if the given token stream is a module
+-spec is_module(list()) -> boolean().
+is_module(
+ [{'-', _}, {atom, _, module}, {'(', _}, {atom, _, Module}, {')', _}, {dot, _} |
+  _Rest]
+ ) ->
+    Module;
+is_module(_List) ->
+    false.
 
 
 check_is_complete([], []) ->
     complete;
 
-check_is_complete([], _List) ->
-    {incomplete, <<"   ">>};
+check_is_complete([], List) ->
+    {incomplete, << <<"  ">> || _ <- List >>};
 
 check_is_complete([{Token, _}|Tail], [Token|Stack]) ->
     check_is_complete(Tail, Stack);
