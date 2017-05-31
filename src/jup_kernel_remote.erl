@@ -16,6 +16,7 @@
 
 -spec start_link(atom(), atom(), module(), list()) -> pid().
 start_link(Name, Node, Backend, BackendArgs) ->
+    % TODO: Clean up all modules that are pushed to the other node?
     IOPid = jup_kernel_io:get_pid(Name),
     copy_to_node(Node, Backend),
     spawn_link(Node, ?MODULE, start_loop, [self(), IOPid, Backend, BackendArgs]).
@@ -79,9 +80,9 @@ do_copy_to_node(Node, Modules) ->
                           {_, Bin, Fn} ->
                               case rpc:call(
                                      Node, code, load_binary,
-                                     [Module, Bin, Fn]
+                                     [Module, Fn, Bin]
                                     ) of
-                                  ok ->
+                                  {module, _} ->
                                       Errors;
                                   {error, Error} ->
                                       [{Module, Error} | Errors]

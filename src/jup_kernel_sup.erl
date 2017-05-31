@@ -6,7 +6,6 @@
 
 -export([
          start_link/4,
-         stop/1,
          init/1
         ]).
 
@@ -24,11 +23,6 @@ start_link(Name, ConnData = #jup_conn_data{}, Backend, Args) ->
 
 start_link(Name, FileName, Backend, Args) ->
     start_link(Name, jup_connection_file:parse(FileName), Backend, Args).
-
-
--spec stop(Name :: term()) -> ok.
-stop(Name) ->
-    supervisor:stop(?JUP_VIA(Name, kernel_sup)).
 
 
 -spec init([term()]) ->
