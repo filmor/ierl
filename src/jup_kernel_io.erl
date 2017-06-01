@@ -62,7 +62,7 @@ handle_info({io_request, From, ReplyAs, Request}, State) ->
     {noreply, State1};
 
 handle_info(_Msg, State) ->
-    lager:info("Got message ~p", [_Msg]),
+    lager:debug("Got message ~p", [_Msg]),
     {noreply, State}.
 
 

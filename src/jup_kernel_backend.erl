@@ -157,8 +157,6 @@ init_remote_state(Name, Node, Backend, BackendArgs) ->
                 true ->
                     fun (Args) when length(Args) =:= Arity ->
                             Ref = make_ref(),
-                            lager:info("Calling ~p with ~p at ~p", [FName, Args,
-                                                                    RemotePid]),
                             RemotePid ! {call, Ref, FName,
                                          lists:droplast(Args)},
                             {
