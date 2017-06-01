@@ -48,6 +48,13 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
     net_kernel:start([SName1, shortnames]),
     lager:info("Set node name to ~p", [SName1]),
 
+    case os:getenv("IERL_COOKIE") of
+        false -> ok;
+        "" -> ok;
+        Value ->
+            erlang:setcookie(node(), list_to_atom(Value))
+    end,
+
     case proplists:get_value(cookie, ParsedArgs, undefined) of
         undefined -> ok;
         Val1 -> erlang:setcookie(node(), list_to_atom(Val1))

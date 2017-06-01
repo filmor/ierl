@@ -27,7 +27,6 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
     application:ensure_all_started(jsx),
 
     % TODO: Default to BName_Node
-    Name = proplists:get_value(name, ParsedArgs, BName),
     Copy = proplists:get_value(copy, ParsedArgs, false),
 
     Args = #{ copy => Copy, args => [] },
@@ -37,13 +36,25 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
                       forward_arg(PName, ParsedArgs, A)
               end,
               Args,
-              [node, sname, cookie]
+              [node, sname]
              ),
 
+    Args2 = case proplists:get_value(cookie, ParsedArgs, undefined) of
+                undefined ->
+                    Args1;
+                Val ->
+                    Args1#{
+                      env => #{
+                        'IERL_COOKIE' => jup_util:ensure_binary(Val)
+                       }
+                     }
+            end,
+
     % TODO Parse rest and add to spec
+    Name = proplists:get_value(name, ParsedArgs, BName),
 
     io:format("Building kernel spec...~n"),
-    Spec = ierl_kernelspec:build(BName, Args1),
+    Spec = ierl_kernelspec:build(BName, Args2),
     io:format("Built kernel spec, storing~n"),
     ierl_kernelspec:write(Name, Spec),
     io:format("Installed kernel ~s with backend ~s~n", [Name, Backend]).
@@ -55,8 +66,9 @@ forward_arg(Name, ParsedArgs, Args) ->
             Args;
         Val ->
             Param = jup_util:ensure_binary(io_lib:format("--~p", [Name])),
+            Val1 = jup_util:ensure_binary(Val),
             Args#{
-              args => maps:get(args, Args, [])
-                      ++ [Param, jup_util:ensure_binary(Val)]
+              args => maps:get(args, Args, []) ++ [Param, Val1],
+              Name => Val1
              }
     end.

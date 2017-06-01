@@ -48,6 +48,11 @@ build(ScriptPath, Backend, Options) ->
                _ -> []
            end,
 
+    Env = case maps:find(env, Options) of
+              {ok, Value1} -> Value1;
+              _ -> #{}
+          end,
+
     {Files, ScriptPath1} =
     case maps:get(copy, Options, false) of
         true ->
@@ -68,10 +73,14 @@ build(ScriptPath, Backend, Options) ->
 
     Spec = #{
       argv => Argv,
-      % TODO Generate display_name from the module
-      display_name => Backend,
+      % TODO Generate display_name from the module by passing the args, also
+      % append the node name in case this is a remote connection
+      display_name => jup_util:call_if_exported(
+                        Backend, display_name, [], Backend
+                       ),
       % TODO Get from module
-      language => <<"erlang">>
+      language => jup_util:call_if_exported(Backend, language, [], erlang),
+      env => Env
     },
 
     Files#{
