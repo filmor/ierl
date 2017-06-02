@@ -14,7 +14,7 @@ backends() ->
 commands() ->
     #{
         install => ierl_cmd_install,
-        run => ierl_cmd_run
+        kernel => ierl_cmd_kernel
     }.
 
 

@@ -59,14 +59,13 @@ build(ScriptPath, Backend, Options) ->
             NewScriptPath = filename:join([Root, "kernel.escript"]),
             { #{ NewScriptPath => {copy, ScriptPath} }, NewScriptPath};
         _Val ->
-            lager:info("Copy val: ~p", [_Val]),
             {#{}, ScriptPath}
     end,
 
     Argv = [
             path_to_binary(get_escript_bin()),
             path_to_binary(ScriptPath1),
-            <<"run">>,
+            <<"kernel">>,
             Backend,
             <<"-f">>, <<"{connection_file}">>
            ] ++ Args,

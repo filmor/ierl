@@ -1,4 +1,4 @@
--module(ierl_cmd_run).
+-module(ierl_cmd_kernel).
 
 -export([
          exec/3,
@@ -20,7 +20,7 @@ opt_spec() ->
     }.
 
 
-exec({BName, Backend}, ParsedArgs, Rest) ->
+exec({BName, Backend}, ParsedArgs, _Rest) ->
     {ok, _Deps} = application:ensure_all_started(ierl),
 
     JsonFile = proplists:get_value(conn_file, ParsedArgs),
@@ -28,13 +28,6 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
         undefined -> error(must_specify_conn_file);
         _ -> ok
     end,
-
-    Node = case proplists:get_value(node, ParsedArgs, undefined) of
-               undefined ->
-                   node();
-               Val ->
-                   list_to_atom(Val)
-           end,
 
     SName = proplists:get_value(sname, ParsedArgs, atom_to_list(BName)),
 
@@ -52,13 +45,15 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
         false -> ok;
         "" -> ok;
         Value ->
-            erlang:setcookie(node(), list_to_atom(Value))
+            erlang:set_cookie(node(), list_to_atom(Value))
     end,
 
-    case proplists:get_value(cookie, ParsedArgs, undefined) of
-        undefined -> ok;
-        Val1 -> erlang:setcookie(node(), list_to_atom(Val1))
-    end,
+    Node = case proplists:get_value(node, ParsedArgs, undefined) of
+               undefined ->
+                   node();
+               Val ->
+                   list_to_atom(Val)
+           end,
 
     lager:info("Starting Erlang kernel with connection file ~s against ~p",
                [JsonFile, Node]),
@@ -66,7 +61,7 @@ exec({BName, Backend}, ParsedArgs, Rest) ->
     process_flag(trap_exit, true),
     % TODO Parse rest of the args
     Args = #{ node => Node },
-    {ok, Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend, Args),
+    {ok, _Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend, Args),
 
     receive
         Msg ->
