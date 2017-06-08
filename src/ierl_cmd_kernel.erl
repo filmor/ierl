@@ -33,7 +33,8 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
 
     Suffix = binary:replace(
                base64:encode(crypto:strong_rand_bytes(6)),
-               [<<"+">>, <<"/">>], <<"/">>
+               [<<"+">>, <<"/">>], <<"_">>,
+               [global]
               ),
 
     SName1 = binary_to_atom(iolist_to_binary([SName, "_", Suffix]), utf8),
