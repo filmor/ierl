@@ -6,14 +6,17 @@
 -spec backends() -> #{}.
 backends() ->
     #{
-       erlang => ierl_backend_erlang
+       erlang => ierl_backend_erlang,
+       elixir => ierl_backend_elixir
     }.
 
 
 -spec commands() -> #{}.
 commands() ->
     #{
+        % Install a kernel permanently under a given name
         install => ierl_cmd_install,
+        % Execute a kernel using a connection file
         kernel => ierl_cmd_kernel
     }.
 
