@@ -1,15 +1,10 @@
-{application, ierl,
- [
-  {description, "Erlang jupyter frontend tool to install and run kernels"},
-  {vsn, "0.1.1"},
-
-  {registered, []},
-  {applications, [kernel, stdlib, lager, jupyter, getopt, lfe]},
-  {included_applications, []},
-  {env, []},
-
-  {licenses, ["GPLv3"]},
-  {maintainers, ["Benedikt Reinartz"]},
-  {links, [{"Github", "https://github.com/filmor/ierl"}]}
- ]
-}.
+{application,ierl,
+             [{description,"Erlang jupyter frontend tool to install and run kernels"},
+              {vsn,"0.1.2"},
+              {registered,[]},
+              {applications,[kernel,stdlib,lager,jupyter,getopt,lfe]},
+              {included_applications,[]},
+              {env,[]},
+              {licenses,["GPLv3"]},
+              {maintainers,["Benedikt Reinartz"]},
+              {links,[{"Github","https://github.com/filmor/ierl"}]}]}.

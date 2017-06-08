@@ -8,5 +8,5 @@ log/
 tmp/
 rebar3
 rebar.lock
-_checkouts/
+_checkouts*/
 __pycache__/
