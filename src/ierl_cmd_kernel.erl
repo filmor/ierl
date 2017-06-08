@@ -31,12 +31,12 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
 
     SName = proplists:get_value(sname, ParsedArgs, atom_to_list(BName)),
 
-    SName1 = binary_to_atom(
-               list_to_binary(
-                 [SName, "_", base64:encode(crypto:strong_rand_bytes(6))]
-                ),
-               utf8
+    Suffix = binary:replace(
+               base64:encode(crypto:strong_rand_bytes(6)),
+               [<<"+">>, <<"/">>], <<"/">>
               ),
+
+    SName1 = binary_to_atom(iolist_to_binary([SName, "_", Suffix]), utf8),
 
     net_kernel:start([SName1, shortnames]),
     lager:info("Set node name to ~p", [SName1]),
