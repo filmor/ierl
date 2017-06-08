@@ -7,7 +7,8 @@
 backends() ->
     #{
        erlang => ierl_backend_erlang,
-       elixir => ierl_backend_elixir
+       elixir => ierl_backend_elixir,
+       lfe => ierl_backend_lfe
     }.
 
 
