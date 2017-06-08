@@ -75,7 +75,7 @@ main(["--help"]) ->
 
 main(["help"]) ->
     Cmd = filename:basename(escript:script_name()),
-    io:format("Usage: ~s <backend> <cmd>~n~n", [Cmd]),
+    io:format("Usage: ~s <cmd> <backend>~n~n", [Cmd]),
     list_commands(),
     list_backends();
 
@@ -111,6 +111,11 @@ main(Command, [Backend | Rest]) ->
 
 main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
     % TODO Replace lager for normal commands, only use it for the actual kernel
+    application:load(lager),
+
+    application:set_env(lager, suppress_application_start_stop, true),
+    application:set_env(lager, suppress_supervisor_start_stop, true),
+
     {ok, _} = application:ensure_all_started(lager),
     lager:set_loglevel(lager_console_backend, info),
 
