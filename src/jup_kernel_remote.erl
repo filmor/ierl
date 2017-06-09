@@ -1,6 +1,7 @@
 -module(jup_kernel_remote).
 
 -export([
+         start_link/3,
          start_link/4,
          start_loop/4,
          copy_to_node/2
@@ -13,6 +14,12 @@
           backend_state
          }).
 
+
+-spec start_link(atom(), module(), list()) -> pid().
+start_link(Name, Backend, BackendArgs) ->
+    IOPid = jup_kernel_io:get_pid(Name),
+    spawn_link(?MODULE, start_loop, [self(), IOPid, Backend,
+                                           BackendArgs]).
 
 -spec start_link(atom(), atom(), module(), list()) -> pid().
 start_link(Name, Node, Backend, BackendArgs) ->
@@ -30,6 +37,9 @@ start_loop(Pid, IOPid, Backend, BackendArgs) ->
                backend=Backend,
                backend_state=Backend:init(BackendArgs)
               },
+
+    Pid ! init_complete,
+
     loop(State).
 
 

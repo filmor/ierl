@@ -78,8 +78,9 @@
           name,
           node,
           backend,
-          backend_state,
-          pending_replies = #{},
+          worker_pid,
+          got_initial_state = false,
+          exec_queue = [],
           exec_counter = 0,
           do_execute,
           do_complete,
@@ -109,92 +110,87 @@ complete(Name, Code, CursorPos, Msg) -> do_call(Name, {complete, Code,
 
 
 init([Name, Node, Backend, BackendArgs]) ->
-    State =
+    WorkerPid =
     case Node =:= node() of
         true ->
-            init_local_state(Name, Backend, BackendArgs);
+            jup_kernel_remote:start_link(Name, Backend, BackendArgs);
         _ ->
-            init_remote_state(Name, Node, Backend, BackendArgs)
+            jup_kernel_remote:start_link(Name, Node, Backend, BackendArgs)
     end,
-
-    {ok, State}.
-
-
-init_local_state(Name, Backend, BackendArgs) ->
-    Get =
-    fun(FName, Arity) ->
-            case erlang:function_exported(Backend, FName, Arity) of
-                true ->
-                    fun (Args) when length(Args) =:= Arity ->
-                            erlang:apply(Backend, FName, Args)
-                    end;
-                _ ->
-                    undefined
-            end
-    end,
-
-    erlang:group_leader(jup_kernel_io:get_pid(Name), self()),
-
-    #state{
-       name=Name,
-       node=node(),
-       backend=Backend,
-       backend_state=Backend:init(BackendArgs),
-
-       do_execute=Get(do_execute, 4),
-       do_complete=Get(do_complete, 4),
-       do_inspect=Get(do_inspect, 5),
-       do_is_complete=Get(do_is_complete, 3)
-      }.
-
-
-init_remote_state(Name, Node, Backend, BackendArgs) ->
-    RemotePid = jup_kernel_remote:start_link(Name, Node, Backend, BackendArgs),
 
     Get =
     fun (FName, Arity) ->
             case erlang:function_exported(Backend, FName, Arity) of
                 true ->
-                    fun (Args) when length(Args) =:= Arity ->
+                    fun (Args) when length(Args) =:= Arity - 1 ->
                             Ref = make_ref(),
-                            RemotePid ! {call, Ref, FName,
-                                         lists:droplast(Args)},
-                            {
-                             receive
-                                 {Ref, Result} ->
-                                     Result;
-                                 {Ref, exec_error, {Type, Reason}} ->
-                                     {error, Type, Reason, [<<"internal">>]}
-                             end,
-                             RemotePid
-                            }
+                            WorkerPid ! {call, Ref, FName, Args},
+
+                            receive
+                                {Ref, Result} ->
+                                    Result;
+                                {Ref, exec_error, {Type, Reason}} ->
+                                    {error, Type, Reason, [<<"internal">>]}
+                            end
                     end;
                 _ ->
                     undefined
             end
     end,
 
-    #state{
-       name=Name,
-       node=Node,
-       backend=Backend,
-       backend_state=RemotePid,
+    {ok, #state{
+            name=Name,
+            node=Node,
+            backend=Backend,
+            worker_pid=WorkerPid,
 
-       do_execute=Get(do_execute, 4),
-       do_complete=Get(do_complete, 4),
-       do_inspect=Get(do_inspect, 5),
-       do_is_complete=Get(do_is_complete, 3)
-      }.
+            do_execute=Get(do_execute, 4),
+            do_complete=Get(do_complete, 4),
+            do_inspect=Get(do_inspect, 5),
+            do_is_complete=Get(do_is_complete, 3)
+           }
+    }.
 
+handle_info(init_complete, State)
+  when State#state.got_initial_state =:= false ->
+    % TODO Execute all entries from the exec_queue
+
+    State1 =
+    lists:foldr(
+      fun ({Action, From}, S) ->
+              lager:debug("Handling action ~p", [Action]),
+              {reply, Value, NewState} = handle_call(Action, From, S),
+              gen_server:reply(From, Value),
+              NewState
+      end,
+      State#state{got_initial_state=true},
+      State#state.exec_queue
+     ),
+
+    {noreply, State1};
 
 handle_info(_Msg, State) ->
     {noreply, State}.
 
+
 handle_cast(_Msg, _State) ->
     error({invalid_cast, _Msg}).
 
+
+handle_call({kernel_info, _Msg}, _From, State) ->
+    % TODO: Pass on to backend
+    {reply, {<<"IErlang">>, <<"0.2">>, <<"Erlang kernel">>}, State};
+
 handle_call(exec_counter, _From, State) ->
     {reply, State#state.exec_counter, State};
+
+handle_call(Action, From, State)
+  when State#state.got_initial_state =:= false ->
+    lager:debug("Enqueueing action ~p"),
+    {noreply,
+     State#state{exec_queue=[{Action, From} | State#state.exec_queue]}
+    };
+
 
 handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
     io:setopts([{jup_msg, Msg}]),
@@ -206,16 +202,14 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    {Res1, State1} = case State#state.do_execute of
-                         undefined ->
-                             {not_implemented, State};
-                         Fun ->
-                             {Res, BState1} = Fun([Code, undefined, Msg,
-                                                   State#state.backend_state]),
+    Res1 = case State#state.do_execute of
+               undefined ->
+                   not_implemented;
+               Fun ->
+                   Fun([Code, undefined, Msg])
+           end,
 
-                             {Res, State#state{exec_counter=ExecCounter,
-                                               backend_state=BState1}}
-                     end,
+    State1 = State#state{exec_counter=ExecCounter},
 
     Res2 = case Res1 of
                {ok, Value} ->
@@ -257,20 +251,14 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
 
     {reply, Res2, State1};
 
-handle_call({kernel_info, _Msg}, _From, State) ->
-    % TODO: Pass on to backend
-    {reply, {<<"IErlang">>, <<"0.2">>, <<"Erlang kernel">>}, State};
 
 handle_call({is_complete, Code, Msg}, _From, State) ->
-    {Res1, State1} = case State#state.do_is_complete of
-                         undefined ->
-                             {not_implemented, State};
-                         Fun ->
-                             {Res, BState1} = Fun([Code, Msg,
-                                                   State#state.backend_state]),
-
-                             {Res, State#state{backend_state=BState1}}
-                     end,
+    Res1 = case State#state.do_is_complete of
+               undefined ->
+                   not_implemented;
+               Fun ->
+                   Fun([Code, Msg])
+           end,
 
     Res2 = case Res1 of
                incomplete ->
@@ -283,18 +271,15 @@ handle_call({is_complete, Code, Msg}, _From, State) ->
                    Value
            end,
 
-    {reply, Res2, State1};
+    {reply, Res2, State};
 
 handle_call({complete, Code, CursorPos, Msg}, _From, State) ->
-    {Res1, State1} = case State#state.do_complete of
-                         undefined ->
-                             {not_implemented, State};
-                         Fun ->
-                             {Res, BState1} = Fun([Code, CursorPos, Msg,
-                                                   State#state.backend_state]),
-
-                             {Res, State#state{backend_state=BState1}}
-                     end,
+    Res1 = case State#state.do_complete of
+               undefined ->
+                   not_implemented;
+               Fun ->
+                   Fun([Code, CursorPos, Msg])
+           end,
 
     Res2 = case Res1 of
                L when is_list(L) ->
@@ -307,7 +292,7 @@ handle_call({complete, Code, CursorPos, Msg}, _From, State) ->
                    noreply
            end,
 
-    {reply, Res2, State1};
+    {reply, Res2, State};
 
 
 handle_call(_Other, _From, _State) ->
@@ -321,6 +306,4 @@ terminate(_Reason, _State) ->
     ok.
 
 do_call(Name, Call) ->
-    gen_server:call(?JUP_VIA(Name, backend), Call).
-
-% process_backend_call(Call, ArgMessage,
+    gen_server:call(?JUP_VIA(Name, backend), Call, infinity).
