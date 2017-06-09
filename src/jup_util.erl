@@ -6,7 +6,9 @@
          hexlify/1,
 
          call_if_exported/3,
-         call_if_exported/4
+         call_if_exported/4,
+
+         copy_to_node/2
         ]).
 
 
@@ -55,4 +57,53 @@ call_if_exported(Module, Func, Args, Default) ->
             Module:Func(Args);
         _ ->
             Default
+    end.
+
+
+-spec copy_to_node(atom(), module()) -> ok | {error, [{module(), term()}]}.
+copy_to_node(Node, Backend) ->
+    Deps = jup_util:call_if_exported(Backend, deps, [], []),
+
+    case Node =:= node() of
+        true ->
+            code:ensure_modules_loaded([Backend] ++ Deps);
+        _ ->
+            do_copy_to_node(Node, [jup_kernel_worker, Backend] ++ Deps)
+    end.
+
+
+do_copy_to_node(Node, Modules) ->
+    Errs =
+    lists:foldl(
+      fun (Module, Errors) ->
+              % Never override remote modules
+              case rpc:call(Node, code, is_loaded, [Module]) of
+                  {file, _} ->
+                      ok;
+                  _ ->
+                      case code:get_object_code(Module) of
+                          error ->
+                              [{Module, no_object_code} | Errors];
+                          {_, Bin, Fn} ->
+                              case rpc:call(
+                                     Node, code, load_binary,
+                                     [Module, Fn, Bin]
+                                    ) of
+                                  {module, _} ->
+                                      Errors;
+                                  {error, Error} ->
+                                      [{Module, Error} | Errors]
+                              end
+                      end
+              end
+      end,
+      [],
+      Modules
+     ),
+
+    case Errs of
+        [] ->
+            ok;
+        _ ->
+            {error, Errs}
     end.

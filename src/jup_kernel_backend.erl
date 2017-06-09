@@ -113,9 +113,9 @@ init([Name, Node, Backend, BackendArgs]) ->
     WorkerPid =
     case Node =:= node() of
         true ->
-            jup_kernel_remote:start_link(Name, Backend, BackendArgs);
+            jup_kernel_worker:start_link(Name, Backend, BackendArgs);
         _ ->
-            jup_kernel_remote:start_link(Name, Node, Backend, BackendArgs)
+            jup_kernel_worker:start_link(Name, Node, Backend, BackendArgs)
     end,
 
     Get =
