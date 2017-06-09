@@ -26,10 +26,10 @@ opt_spec() ->
 
 
 language() ->
-    lisp.
+    'common-lisp'.
 
 
-init(Args) ->
+init(_Args) ->
     {ok, _} = application:ensure_all_started(lfe),
     #state{env=lfe_env:new()}.
 
@@ -78,10 +78,15 @@ do_is_complete(Code, _Msg, State) ->
 
 
 do_complete(Code, CursorPos, _Msg, State) ->
-    {[], State}.
+    L = lists:sublist(binary_to_list(Code), CursorPos),
+    Res = case lfe_edlin_expand:expand(lists:reverse(L)) of
+              {yes, Expansion, []} ->
+                  [Expansion];
+              {yes, [], Matches} ->
+                  [Name || {Name, _Arity} <- Matches];
+              {no, [], Matches} ->
+                  [Name || {Name, _Arity} <- Matches]
+          end,
 
-
-split_arity(Str) ->
-    {Name, [_|Arity]} = lists:splitwith(fun (X) -> X =/= $/ end, Str),
-    {Name, list_to_integer(Arity)}.
+    {[list_to_binary(R) || R <- Res], State}.
 

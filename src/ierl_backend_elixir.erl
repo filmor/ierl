@@ -107,8 +107,16 @@ do_complete(Code, CursorPos, _Msg, State) ->
 
 
 split_arity(Str) ->
-    {Name, [_|Arity]} = lists:splitwith(fun (X) -> X =/= $/ end, Str),
-    {Name, list_to_integer(Arity)}.
+    {Name, ArityPart} = lists:splitwith(fun (X) -> X =/= $/ end, Str),
+
+    Arity = case ArityPart of
+                [$/ | Rest] ->
+                    list_to_integer(Rest);
+                _ ->
+                    undefined
+            end,
+
+    {Name, Arity}.
 
 
 get_elixir_path(Args) ->
