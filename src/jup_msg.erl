@@ -12,8 +12,12 @@
 -define(DELIM, <<"<IDS|MSG>">>).
 -define(VERSION, <<"5.1">>).
 
+-type key() :: {crypto:hash_algorithms(), binary()}.
 
--spec decode([binary()], {crypto:hash_algorithms(), binary()}) -> #jup_msg{}.
+-export_type([key/0]).
+
+
+-spec decode([binary()], key()) -> #jup_msg{}.
 decode(MultipartMsg, {SignatureScheme, Key}) ->
     {Uuids, Suffix} = jup_util:split_at_delim(MultipartMsg, ?DELIM),
 
@@ -43,7 +47,7 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
       }.
 
 
--spec encode(#jup_msg{}, {crypto:hash_algorithms(), binary()}) -> [binary()].
+-spec encode(#jup_msg{}, key()) -> [binary()].
 encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
     Ctx0 = crypto:hmac_init(SignatureScheme, Key),
     Header = jsx:encode(Msg#jup_msg.header),

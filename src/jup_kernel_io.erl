@@ -90,8 +90,8 @@ request({put_chars, Encoding, Chars}, State) ->
 request({put_chars, Encoding, Module, Function, Args}, State) ->
     request({put_chars, Encoding, apply(Module, Function, Args)}, State);
 
-request({request, Requests}, State) ->
-    multi_request(Requests, {ok, <<"">>, State});
+request({request, Requests}, State) when is_list(Requests) ->
+    multi_request(Requests, {ok, State});
 
 request({setopts, Opts}, State) ->
     {ok, State#state{opts=Opts}};
@@ -103,7 +103,8 @@ request(_, State) ->
     {{error, request}, State}.
 
 
-
+multi_request([R|Rs], {ok, State}) ->
+    multi_request(Rs, request(R, State));
 multi_request([R|Rs], {{ok, _}, State}) ->
     multi_request(Rs, request(R, State));
 multi_request([_|_], {Error, State}) ->

@@ -6,6 +6,7 @@
 
 -export([
          start_link/4,
+         stop/1,
          init/1
         ]).
 
@@ -23,6 +24,23 @@ start_link(Name, ConnData = #jup_conn_data{}, Backend, Args) ->
 
 start_link(Name, FileName, Backend, Args) ->
     start_link(Name, jup_connection_file:parse(FileName), Backend, Args).
+
+
+-spec stop(Name :: term()) -> ok | {error, Reason :: term()}.
+stop(Name) ->
+    Pid = gproc:where(?JUP_NAME(Name, kernel_sup)),
+    Ref = monitor(process, Pid),
+    exit(Pid, normal),
+
+    receive
+        {'DOWN', Ref, process, Pid, Reason} ->
+            case Reason of
+                normal ->
+                    ok;
+                _ ->
+                    {error, Reason}
+            end
+    end.
 
 
 -spec init([term()]) ->

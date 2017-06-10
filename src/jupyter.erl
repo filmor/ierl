@@ -6,8 +6,12 @@
          start_kernel/4
         ]).
 
+-type name() :: atom().
 
--spec start_kernel(Name :: atom(), Filename :: binary(), Backend :: module(),
+-export_type([name/0]).
+
+
+-spec start_kernel(Name :: name(), Filename :: binary(), Backend :: module(),
                    Args :: map()) ->
     {ok, pid()}.
 

@@ -18,8 +18,7 @@
 -spec start_link(atom(), module(), list()) -> pid().
 start_link(Name, Backend, BackendArgs) ->
     IOPid = jup_kernel_io:get_pid(Name),
-    spawn_link(?MODULE, start_loop, [self(), IOPid, Backend,
-                                           BackendArgs]).
+    spawn_link(?MODULE, start_loop, [self(), IOPid, Backend, BackendArgs]).
 
 -spec start_link(atom(), atom(), module(), list()) -> pid().
 start_link(Name, Node, Backend, BackendArgs) ->

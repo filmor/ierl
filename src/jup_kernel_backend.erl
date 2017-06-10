@@ -70,26 +70,22 @@
 % Implement Silent, History, AllowStdin in here
 
 
-% -callback do_history
-
-
-
 -record(state, {
-          name,
-          node,
-          backend,
-          worker_pid,
-          got_initial_state = false,
-          exec_queue = [],
-          exec_counter = 0,
-          do_execute,
-          do_complete,
-          do_is_complete,
-          do_inspect
+          name :: jupyter:name(),
+          node :: node(),
+          backend :: module(),
+          worker_pid :: pid(),
+          got_initial_state = false :: boolean(),
+          exec_queue = [] :: [tuple()],
+          exec_counter = 0 :: integer(),
+          do_execute :: function() | undefined,
+          do_complete :: function() | undefined,
+          do_is_complete :: function() | undefined,
+          do_inspect :: function() | undefined
          }).
 
 
--spec start_link(atom(), atom(), module(), list()) -> {ok, pid()}.
+-spec start_link(jupyter:name(), node(), module(), [any()]) -> {ok, pid()}.
 start_link(Name, Node, Backend, BackendArgs) ->
     {module, _} = code:ensure_loaded(Backend),
     gen_server:start_link(
@@ -97,16 +93,20 @@ start_link(Name, Node, Backend, BackendArgs) ->
      ).
 
 
+-spec exec_counter(jupyter:name()) -> integer().
 exec_counter(Name) ->
     do_call(Name, exec_counter).
 
+-spec execute(jupyter:name(), binary(), boolean(), boolean(), #jup_msg{}) -> ok.
 execute(Name, Code, Silent, StoreHistory, Msg) ->
     do_call(Name, {execute, Code, Silent, StoreHistory, Msg}).
 
-kernel_info(Name, Msg) -> do_call(Name, {kernel_info, Msg}).
-is_complete(Name, Code, Msg) -> do_call(Name, {is_complete, Code, Msg}).
-complete(Name, Code, CursorPos, Msg) -> do_call(Name, {complete, Code,
-                                                       CursorPos, Msg}).
+kernel_info(Name, Msg) ->
+    do_call(Name, {kernel_info, Msg}).
+is_complete(Name, Code, Msg) ->
+    do_call(Name, {is_complete, Code, Msg}).
+complete(Name, Code, CursorPos, Msg) ->
+    do_call(Name, {complete, Code, CursorPos, Msg}).
 
 
 init([Name, Node, Backend, BackendArgs]) ->
@@ -193,7 +193,7 @@ handle_call(Action, From, State)
 
 
 handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
-    io:setopts([{jup_msg, Msg}]),
+    ok = io:setopts([{jup_msg, Msg}]),
 
     ExecCounter = case Silent of
                       true ->

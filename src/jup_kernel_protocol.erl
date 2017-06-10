@@ -153,13 +153,6 @@ do_process(Name, _Source, <<"complete_request">>, Msg) ->
     jup_kernel_backend:complete(Name, Code, CursorPos, Msg);
 
 
-% TODO:
-% do_process(Name, Source, <<"execute_request">>, Msg) ->
-% do_process(Name, Source, <<"is_complete_request">>, Msg) ->
-% do_process(Name, Source, <<"complete_request">>, Msg) ->
-% do_process(Name, Source, <<"shutdown_request">>, Msg) ->
-% do_process(Name, Source, <<"execute_request">>, Msg) ->
-
 do_process(Name, Source, MsgType, Msg) ->
     lager:debug("Not implemented on ~s: ~p:~s~n~p", [Name, Source, MsgType,
                                                      lager:pr(Msg, ?MODULE)

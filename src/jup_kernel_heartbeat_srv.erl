@@ -21,24 +21,26 @@
 
 
 -record(state, {
-          socket,
-          last_heartbeat,
-          receiver,
-          ref
+          socket :: pid(),
+          last_heartbeat :: erlang:timestamp() | undefined,
+          receiver :: pid(),
+          ref :: reference()
          }).
 
 
+-spec start_link(jupyter:name(), #jup_conn_data{}) -> {ok, pid()}.
 start_link(Name, ConnData) ->
     gen_server:start_link(?JUP_VIA(Name, heartbeat), ?MODULE,
-                          [Name, ConnData], []
+                          {Name, ConnData}, []
                          ).
 
 
+-spec last_heartbeat(jupyter:name()) -> erlang:timestamp().
 last_heartbeat(Name) ->
     gen_server:call(?JUP_VIA(Name, heartbeat), last_heartbeat).
 
 
-init([Name, ConnData]) ->
+init({Name, ConnData}) ->
     Identity = string:concat(atom_to_list(Name), "-heartbeat"),
     {ok, Socket} = chumak:socket(rep, Identity),
     {ok, _Bind} = chumak:bind(
@@ -48,17 +50,12 @@ init([Name, ConnData]) ->
                     ConnData#jup_conn_data.heartbeat_port
                    ),
 
-    timer:sleep(1000),
-
     Ref = make_ref(),
     Self = self(),
+    Receiver = spawn_link(fun () -> do_receive(Self, Ref, Socket) end),
 
-    {ok, #state{
-            socket=Socket,
-            receiver=spawn_link(fun () -> do_receive(Self, Ref, Socket) end),
-            ref=Ref
-           }
-    }.
+    {ok, #state{socket=Socket, receiver=Receiver, ref=Ref}}.
+
 
 handle_info({Ref, _Msg, LastHeartbeat}, State)
   when State#state.ref =:= Ref ->
@@ -81,7 +78,12 @@ terminate(_Reason, _State) ->
     ok.
 
 
+-spec do_receive(pid(), reference(), pid()) -> no_return().
 do_receive(Pid, Ref, Socket) ->
+    timer:sleep(1000),
+    do_receive_loop(Pid, Ref, Socket).
+
+do_receive_loop(Pid, Ref, Socket) ->
     {ok, Msg} = chumak:recv(Socket),
     % lager:debug("Got heartbeat message: ~p", [Msg]),
     chumak:send(Socket, Msg),
