@@ -77,7 +77,6 @@ build(ScriptPath, Backend, Options) ->
       display_name => jup_util:call_if_exported(
                         Backend, display_name, [], Backend
                        ),
-      % TODO Get from module
       language => jup_util:call_if_exported(Backend, language, [], erlang),
       env => Env
     },
@@ -113,7 +112,7 @@ get_user_path() ->
     filename:join(L).
 
 
--spec getenv(string()) -> string().
+-spec getenv(string()) -> string() | {error, {not_set | empty, string()}}.
 getenv(Name) when is_list(Name) ->
     case os:getenv(Name) of
         false ->

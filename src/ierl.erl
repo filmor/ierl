@@ -3,7 +3,7 @@
 -export([main/1]).
 
 
--spec backends() -> #{}.
+-spec backends() -> map().
 backends() ->
     #{
        erlang => ierl_backend_erlang,
@@ -12,7 +12,7 @@ backends() ->
     }.
 
 
--spec commands() -> #{}.
+-spec commands() -> map().
 commands() ->
     #{
         % Install a kernel permanently under a given name
@@ -132,7 +132,11 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
 
     case proplists:get_value(help, ParsedArgs) of
         true ->
-            getopt:usage(Spec1, io:format("ierl ~s ~s", [BAtom, CmdAtom]));
+            getopt:usage(
+              Spec1, lists:flatten(io_lib:format("ierl ~s ~s",
+                                                 [BAtom, CmdAtom])
+                                  )
+             );
         _ ->
             Command:exec({BAtom, Backend}, ParsedArgs, LeftOver)
     end.
