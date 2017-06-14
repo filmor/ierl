@@ -26,7 +26,7 @@
         ]).
 
 
--callback init(Args :: [term()]) -> State :: term().
+-callback init(Args :: map()) -> State :: term().
 
 
 -type callback_res(Res) :: {Res, State :: term()}
@@ -57,7 +57,7 @@
     -> callback_res({ok, jup_display:type()} | not_found).
 
 
--callback opt_spec() -> [getopt:option_spec()].
+-callback opt_spec() -> {Desc :: iodata(), [getopt:option_spec()]}.
 
 
 -optional_callbacks([
@@ -99,7 +99,7 @@
         end
        ).
 
--spec start_link(jupyter:name(), node(), module(), [any()]) -> {ok, pid()}.
+-spec start_link(jupyter:name(), node(), module(), map()) -> {ok, pid()}.
 start_link(Name, Node, Backend, BackendArgs) ->
     {module, _} = code:ensure_loaded(Backend),
     gen_server:start_link(
