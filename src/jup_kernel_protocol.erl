@@ -19,6 +19,8 @@ process_message(Name, Port, MsgType, Msg) ->
         Status when is_atom(Status) ->
             do_reply(Name, Port, Status, #{}, Msg);
         noreply ->
+            ok;
+        not_implemented ->
             ok
     end,
     do_status(Name, idle, Msg).
@@ -135,7 +137,14 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
     Code = maps:get(<<"code">>, Content),
-    jup_kernel_backend:is_complete(Name, Code, Msg);
+    case jup_kernel_backend:is_complete(Name, Code, Msg) of
+        incomplete ->
+            {incomplete, #{ indent => <<"  ">> }};
+        {incomplete, Indent} ->
+            {incomplete, #{ indent => jup_util:ensure_binary(Indent) }};
+        Value ->
+            Value
+    end;
 
 
 do_process(Name, _Source, <<"shutdown_request">>, _Msg) ->
@@ -150,7 +159,31 @@ do_process(Name, _Source, <<"complete_request">>, Msg) ->
     Code = maps:get(<<"code">>, Content),
     CursorPos = maps:get(<<"cursor_pos">>, Content),
 
-    jup_kernel_backend:complete(Name, Code, CursorPos, Msg);
+    case jup_kernel_backend:complete(Name, Code, CursorPos, Msg) of
+        L when is_list(L) ->
+            {ok, #{
+               cursor_start => CursorPos, cursor_end => CursorPos,
+               matches => [jup_util:ensure_binary(B) || B <- L],
+               metadata => #{}
+              }
+            };
+        not_implemented ->
+            not_implemented;
+        _ ->
+            unknown
+    end;
+
+
+do_process(Name, _Source, <<"inspect_request">>, Msg) ->
+    Content = Msg#jup_msg.content,
+
+    #{
+       <<"code">> := Code,
+       <<"cursor_pos">> := CursorPos,
+       <<"detail_level">> := DetailLevel
+    } = Content,
+
+    jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel);
 
 
 do_process(Name, Source, MsgType, Msg) ->

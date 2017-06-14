@@ -11,7 +11,8 @@
         execute/5,
         kernel_info/2,
         is_complete/3,
-        complete/4
+        complete/4,
+        inspect/4
        ]).
 
 
@@ -28,30 +29,32 @@
 -callback init(Args :: [term()]) -> State :: term().
 
 
+-type callback_res(Res) :: {Res, State :: term()}
+                         | {Res, Extra :: map(), State :: term()}.
+
+-type exec_err() :: {error, Type :: atom(), Reason :: atom(),
+                     StackTrace :: [binary()] | binary()}.
+
+
 -callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
                      State::term())
-    -> {
-         {ok, Value :: term()}
-       | {error, Type :: atom(), Reason :: atom(), StackTrace :: [binary()]},
-        State :: term()
-       }.
+    -> callback_res({ok, jup_display:type()} | exec_err()).
 
 
 -callback do_complete(Code::binary(), CursorPos::integer(), Msg::#jup_msg{},
                       State::term())
-    -> {[binary()], State :: term()}.
+    -> callback_res([binary()]).
 
 
 -callback do_is_complete(Code::binary(), Msg::#jup_msg{}, State::term())
-    -> {
-         complete | invalid | {incomplete, binary()} | incomplete | unknown,
-         State :: term()
-       }.
+    -> callback_res(
+         complete | invalid | {incomplete, binary()} | incomplete | unknown
+        ).
 
 
 -callback do_inspect(Code::binary(), CursorPos::integer(),
-                     DetailLevel::integer(), Msg::#jup_msg{}, State::term()) ->
-    #{}.
+                     DetailLevel::integer(), Msg::#jup_msg{}, State::term())
+    -> callback_res({ok, jup_display:type()} | not_found).
 
 
 -callback opt_spec() -> [getopt:option_spec()].
@@ -75,15 +78,26 @@
           node :: node(),
           backend :: module(),
           worker_pid :: pid(),
+
           got_initial_state = false :: boolean(),
           exec_queue = [] :: [tuple()],
           exec_counter = 0 :: integer(),
+
           do_execute :: function() | undefined,
           do_complete :: function() | undefined,
           do_is_complete :: function() | undefined,
           do_inspect :: function() | undefined
          }).
 
+
+-define(FWD_CALL(Name, Args, State),
+        case State#state.Name of
+            undefined ->
+                not_implemented;
+            Fun ->
+                Fun(Args)
+        end
+       ).
 
 -spec start_link(jupyter:name(), node(), module(), [any()]) -> {ok, pid()}.
 start_link(Name, Node, Backend, BackendArgs) ->
@@ -104,9 +118,11 @@ execute(Name, Code, Silent, StoreHistory, Msg) ->
 kernel_info(Name, Msg) ->
     do_call(Name, {kernel_info, Msg}).
 is_complete(Name, Code, Msg) ->
-    do_call(Name, {is_complete, Code, Msg}).
+    do_call(Name, do_is_complete, [Code, Msg]).
 complete(Name, Code, CursorPos, Msg) ->
-    do_call(Name, {complete, Code, CursorPos, Msg}).
+    do_call(Name, do_complete, [Code, CursorPos, Msg]).
+inspect(Name, Code, CursorPos, DetailLevel) ->
+    do_call(Name, do_inspect, [Code, CursorPos, DetailLevel]).
 
 
 init([Name, Node, Backend, BackendArgs]) ->
@@ -136,6 +152,13 @@ init([Name, Node, Backend, BackendArgs]) ->
                 _ ->
                     undefined
             end
+    end,
+
+    case erlang:function_exported(Backend, do_execute, 4) of
+        false ->
+            error({must_define_execute, Backend});
+        _ ->
+            ok
     end,
 
     {ok, #state{
@@ -200,13 +223,7 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    Res1 = case State#state.do_execute of
-               undefined ->
-                   not_implemented;
-               Fun ->
-                   Fun([Code, undefined, Msg])
-           end,
-
+    Res1 = (State#state.do_execute)([Code, undefined, Msg]),
     State1 = State#state{exec_counter=ExecCounter},
 
     Res2 = case Res1 of
@@ -249,49 +266,17 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
 
     {reply, Res2, State1};
 
+handle_call({call, Name, Args}, _From, State) ->
+    Res = case Name of
+              do_is_complete ->
+                  ?FWD_CALL(do_is_complete, Args, State);
+              do_inspect ->
+                  ?FWD_CALL(do_inspect, Args, State);
+              do_complete ->
+                  ?FWD_CALL(do_complete, Args, State)
+          end,
 
-handle_call({is_complete, Code, Msg}, _From, State) ->
-    Res1 = case State#state.do_is_complete of
-               undefined ->
-                   not_implemented;
-               Fun ->
-                   Fun([Code, Msg])
-           end,
-
-    Res2 = case Res1 of
-               incomplete ->
-                   {incomplete, #{ indent => <<"  ">> }};
-               {incomplete, Indent} ->
-                   {incomplete, #{ indent => Indent }};
-               not_implemented ->
-                   noreply;
-               Value ->
-                   Value
-           end,
-
-    {reply, Res2, State};
-
-handle_call({complete, Code, CursorPos, Msg}, _From, State) ->
-    Res1 = case State#state.do_complete of
-               undefined ->
-                   not_implemented;
-               Fun ->
-                   Fun([Code, CursorPos, Msg])
-           end,
-
-    Res2 = case Res1 of
-               L when is_list(L) ->
-                   {ok, #{
-                      cursor_start => CursorPos, cursor_end => CursorPos,
-                      matches => L,
-                      metadata => #{}
-                     }};
-               _ ->
-                   noreply
-           end,
-
-    {reply, Res2, State};
-
+    {reply, Res, State};
 
 handle_call(_Other, _From, _State) ->
     error({invalid_call, _Other}).
@@ -305,3 +290,6 @@ terminate(_Reason, _State) ->
 
 do_call(Name, Call) ->
     gen_server:call(?JUP_VIA(Name, backend), Call, infinity).
+
+do_call(Name, Func, Args) ->
+    gen_server:call(?JUP_VIA(Name, backend), {call, Func, Args}, infinity).
