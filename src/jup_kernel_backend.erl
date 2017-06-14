@@ -193,8 +193,6 @@ handle_call(Action, From, State)
 
 
 handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
-    ok = io:setopts([{jup_msg, Msg}]),
-
     ExecCounter = case Silent of
                       true ->
                           State#state.exec_counter;
