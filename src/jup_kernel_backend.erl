@@ -226,45 +226,8 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
     Res1 = (State#state.do_execute)([Code, undefined, Msg]),
     State1 = State#state{exec_counter=ExecCounter},
 
-    Res2 = case Res1 of
-               {ok, Value} ->
-                   jup_kernel_protocol:do_iopub(
-                     State#state.name,
-                     execute_result,
-                     #{
-                       execution_count => ExecCounter,
-                       data => #{
-                         <<"text/plain">> =>
-                         list_to_binary(io_lib:format("~p", [Value]))
-                        },
-                       metadata => #{}
-                      },
-                     Msg
-                    ),
-                   {ok, #{ execution_count => ExecCounter, payload => [],
-                           user_expressions => #{} }};
-               {error, Type, Reason, Stacktrace} ->
-                   jup_kernel_protocol:do_iopub(
-                     State#state.name,
-                     error,
-                     #{
-                       execution_count => ExecCounter,
-                       ename => Type,
-                       evalue => Reason,
-                       traceback => Stacktrace
-                      },
-                     Msg
-                    ),
-                   {error, #{
-                      ename => Type,
-                      evalue => Reason,
-                      traceback => Stacktrace,
-                      execution_count => ExecCounter
-                     }
-                   }
-           end,
+    {reply, {Res1, ExecCounter, #{}}, State1};
 
-    {reply, Res2, State1};
 
 handle_call({call, Name, Args}, _From, State) ->
     Res = case Name of
@@ -277,6 +240,7 @@ handle_call({call, Name, Args}, _From, State) ->
           end,
 
     {reply, Res, State};
+
 
 handle_call(_Other, _From, _State) ->
     error({invalid_call, _Other}).

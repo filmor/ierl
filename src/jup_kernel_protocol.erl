@@ -13,7 +13,23 @@
 process_message(Name, Port, MsgType, Msg) ->
     do_status(Name, busy, Msg),
     % TODO: Catch and send error?
-    case do_process(Name, Port, MsgType, Msg) of
+
+    PRes = try
+               do_process(Name, Port, MsgType, Msg)
+           catch
+               Type:Reason ->
+                   lager:error("Error in process_message, stacktrace:~n~s",
+                               [lager:pr_stacktrace(
+                                  erlang:get_stacktrace(),
+                                  {Type, Reason}
+                                 )
+                               ]
+                              ),
+
+                   {caught_error, Type, Reason}
+           end,
+
+    case PRes of
         {Status, Result} ->
             do_reply(Name, Port, Status, Result, Msg);
         Status when is_atom(Status) ->
@@ -21,7 +37,9 @@ process_message(Name, Port, MsgType, Msg) ->
         noreply ->
             ok;
         not_implemented ->
-            ok
+            ok;
+        Other ->
+            lager:error("Invalid process result: ~p", [Other])
     end,
     do_status(Name, idle, Msg).
 
@@ -131,7 +149,36 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
     % TODO Pass on current exec_counter, such that messages can be ignored, i.e.
     % to implement StopOnError (if error occured on ExecCounter = n => ignore
     % all execution attempts of the same execcounter
-    jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg);
+    {Res, ExecCounter, Metadata} =
+    jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg),
+
+    case Res of
+        {ok, Value} ->
+            do_iopub(
+              Name, execute_result,
+              #{
+                  execution_count => ExecCounter,
+                  data => jup_display:to_map(Value),
+                  metadata => Metadata
+              },
+              Msg
+             ),
+
+            {ok, #{ execution_count => ExecCounter, payload => [],
+                    user_expressions => #{} }};
+
+        {error, Type, Reason, Stacktrace} ->
+            ResMsg = #{
+              execution_count => ExecCounter,
+              ename => list_to_binary(Type),
+              evalue => list_to_binary(Reason),
+              traceback => [list_to_binary(Row) || Row <- Stacktrace]
+             },
+
+            do_iopub(Name, error, ResMsg, Msg),
+
+            {error, ResMsg}
+    end;
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->

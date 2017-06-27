@@ -16,6 +16,9 @@
 
 
 -spec to_map(Map :: type()) -> #{ binary() => binary() }.
+to_map(Bin) when is_binary(Bin) ->
+    to_map(#{ text => Bin });
+
 to_map(Map) when is_map(Map) ->
     to_map(maps:to_list(Map));
 
@@ -27,7 +30,7 @@ to_map([]) ->
 
 to_map({MimeType, IOList}) when is_list(IOList); is_binary(IOList) ->
     MimeType2 = mimetype_to_binary(MimeType),
-    #{ MimeType2 => list_to_binary(IOList) }.
+    #{ MimeType2 => jup_util:ensure_binary(IOList) }.
 
 
 -spec mimetype_to_binary(mime_type()) -> binary().
