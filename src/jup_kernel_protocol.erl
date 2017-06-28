@@ -170,9 +170,9 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
         {error, Type, Reason, Stacktrace} ->
             ResMsg = #{
               execution_count => ExecCounter,
-              ename => list_to_binary(Type),
-              evalue => list_to_binary(Reason),
-              traceback => [list_to_binary(Row) || Row <- Stacktrace]
+              ename => jup_util:ensure_binary(Type),
+              evalue => jup_util:ensure_binary(Reason),
+              traceback => [jup_util:ensure_binary(Row) || Row <- Stacktrace]
              },
 
             do_iopub(Name, error, ResMsg, Msg),
