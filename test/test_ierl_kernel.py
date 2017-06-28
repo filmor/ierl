@@ -2,7 +2,7 @@ import unittest
 import jupyter_kernel_test as jkt
 
 class IErlangKernelTests(jkt.KernelTests):
-    kernel_name = "ierl_stub"
+    kernel_name = "erlang"
 
     language_name = "erlang"
 

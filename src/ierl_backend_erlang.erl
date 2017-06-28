@@ -34,7 +34,8 @@ init(_Args) ->
 do_execute(Code, _Publish, _Msg, State) ->
     try
         {Value, State1} = evaluate(binary_to_list(Code), State),
-        {{ok, Value}, State1}
+        Str = iolist_to_binary(io_lib:format("~p~n", [Value])),
+        {{ok, Str}, State1}
     catch
         Type:Reason ->
             lager:error("Error: ~p:~p", [Type, Reason]),

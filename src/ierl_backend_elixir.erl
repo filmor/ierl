@@ -55,19 +55,21 @@ do_execute(Code, _Publish, _Msg, State) ->
         {Res, NewBindings} =
             'Elixir.Code':eval_string(Code, State#state.bindings),
 
-        {{ok, Res}, State#state{bindings=NewBindings}}
+        Res1 = 'Elixir.Kernel':inspect(Res),
+
+        {{ok, Res1}, State#state{bindings=NewBindings}}
     catch
-        error:Error ->
+        Type:Error ->
             case Error of
                 #{
-                    '__struct__' := Type,
+                    '__struct__' := Type1,
                     'description' := Reason
                 } ->
-                    {{error, Type, Reason,
+                    {{error, Type1, Reason,
                       ['Elixir.Exception':format(error, Error)]},
                      State};
                 _ ->
-                    {{error, error, Error, <<>>}, State}
+                    {{error, Type, Error, []}, State}
             end
     end.
 

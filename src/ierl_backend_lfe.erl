@@ -37,22 +37,16 @@ init(_Args) ->
 do_execute(Code, _Publish, _Msg, State) ->
     try
         {Res, NewState} =
-        lfe_shell:run_string(binary_to_list(Code), State#state.env),
+            lfe_shell:run_string(binary_to_list(Code), State#state.env),
 
         NewBindings = element(2, NewState),
+        Res1 = jup_util:ensure_binary(lfe_io_pretty:term(Res)),
 
-        {{ok, Res}, State#state{env=NewBindings}}
+        {{ok, Res1}, State#state{env=NewBindings}}
     catch
         Type:Reason ->
-            % TODO: Use lfe_io instead
-            lager:error("Error: ~p:~p", [Type, Reason]),
-            Stacktrace = [
-                          list_to_binary(io_lib:format("~p", [Item])) ||
-                          Item <- erlang:get_stacktrace()
-                         ],
-            Reason1 = list_to_binary(
-                        io_lib:format("~p", [Reason])
-                       ),
+            Stacktrace = format_stacktrace(erlang:get_stacktrace()),
+            Reason1 = jup_util:ensure_binary(io_lib:format("~p", [Reason])),
 
             {{error, Type, Reason1, Stacktrace}, State}
     end.
@@ -90,3 +84,16 @@ do_complete(Code, CursorPos, _Msg, State) ->
 
     {[list_to_binary(R) || R <- Res], State}.
 
+
+format_stacktrace(Stacktrace) ->
+    % Shamelessly stolen directly from lfe_shell
+    %
+    Sf = fun ({M,_F,_A,_L}) ->
+                 %% Don't want to see these in stacktrace.
+                 (M == lfe_eval) or (M == ?MODULE)
+         end,
+
+    Ff = fun (T, I) -> lfe_io:prettyprint1(T, 15, I, 80) end,
+
+    IoList = lfe_lib:format_stacktrace(Stacktrace, Sf, Ff),
+    [jup_util:ensure_binary(IoList)].
