@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         do_kernel_info/1,
          do_execute/4,
          do_is_complete/3,
          do_complete/4,
@@ -29,6 +30,22 @@ init(_Args) ->
     #state{
        bindings=erl_eval:new_bindings()
       }.
+
+
+do_kernel_info(State) ->
+    Content =
+    #{
+      implementation => ?MODULE,
+      implementation_version => ierl_versions:get_app_version(ierl),
+      banner => <<"Erlang Jupyter Kernel">>,
+      language_info => #{
+        name => erlang,
+        version => ierl_versions:get_otp_version(),
+        file_extension => erl
+       }
+     },
+
+    {Content, State}.
 
 
 do_execute(Code, _Publish, _Msg, State) ->

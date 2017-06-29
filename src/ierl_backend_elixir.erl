@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         do_kernel_info/1,
          do_execute/4,
          do_is_complete/3,
          do_complete/4,
@@ -48,6 +49,23 @@ init(Args) ->
     'Elixir.Code':string_to_quoted(":undefined"),
 
     #state{}.
+
+
+do_kernel_info(State) ->
+    Content =
+    #{
+      implementation => ?MODULE,
+      implementation_version => ierl_versions:get_app_version(ierl),
+      banner => <<"Elixir Jupyter Kernel">>,
+      language_info => #{
+        name => elixir,
+        version => ierl_versions:get_app_version(elixir),
+        file_extension => ex,
+        codemirror_mode => ruby
+       }
+     },
+
+    {Content, State}.
 
 
 do_execute(Code, _Publish, _Msg, State) ->

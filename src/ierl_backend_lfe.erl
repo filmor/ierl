@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         do_kernel_info/1,
          do_execute/4,
          do_is_complete/3,
          do_complete/4,
@@ -32,6 +33,24 @@ language() ->
 init(_Args) ->
     {ok, _} = application:ensure_all_started(lfe),
     #state{env=lfe_env:new()}.
+
+
+do_kernel_info(State) ->
+    Content =
+    #{
+      implementation => ?MODULE,
+      implementation_version => ierl_versions:get_app_version(ierl),
+      banner => <<"Elixir Jupyter Kernel">>,
+      language_info => #{
+        name => lfe,
+        version => ierl_versions:get_app_version(lfe),
+        file_extension => lfe,
+        codemirror_mode => <<"commonlisp">>,
+        pygments_lexer => <<"pygments.lexers.lisp.CommonLispLexer">>
+       }
+     },
+
+    {Content, State}.
 
 
 do_execute(Code, _Publish, _Msg, State) ->
