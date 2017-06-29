@@ -51,10 +51,14 @@ loop(State) ->
     receive
         {call, Ref, Func, Args} ->
             try
+                Args1 = Args ++ [State#state.backend_state],
+
                 {Res, NewState} =
-                erlang:apply(State#state.backend, Func, Args ++
-                             [State#state.backend_state]
-                            ),
+                case erlang:apply(State#state.backend, Func, Args1) of
+                    {R, S} -> {R, S};
+                    {R, _Extra, S} -> {R, S}
+                end,
+
                 State#state.pid ! {Ref, Res},
                 State#state{backend_state=NewState}
             catch

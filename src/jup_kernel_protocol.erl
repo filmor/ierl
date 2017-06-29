@@ -79,34 +79,32 @@ to_reply_type(MsgType) ->
 
 
 do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
-    {ok, Version} = file:read_file(
-                      filename:join(
-                        [
-                         code:root_dir(),
-                         "releases",
-                         erlang:system_info(otp_release),
-                         "OTP_VERSION"
-                        ]
-                       )
-                     ),
+    Content = jup_kernel_backend:kernel_info(Name, Msg),
 
-    {KernelName, KernelVersion, KernelBanner} =
-        jup_kernel_backend:kernel_info(Name, Msg),
-
-    Content =
-    #{
-      protocol_version => <<"5.1">>,
-      implementation => KernelName,
-      implementation_version => KernelVersion,
-      banner => KernelBanner,
-      language_info => #{
-        name => erlang,
-        version => Version,
-        file_extension => <<".erl">>
-       }
+    DefaultLanguageInfo = #{
+      name => erlang,
+      version => unknown,
+      file_extension => <<".erl">>
      },
 
-    {ok, Content};
+    Defaults = #{
+      implementation => erlang_jupyter,
+      implementation_version => unknown,
+      banner => <<"erlang-jupyter-based Kernel">>
+     },
+
+    C1 = maps:merge(Defaults, Content),
+    LanguageInfo = maps:merge(
+                     DefaultLanguageInfo,
+                     maps:get(language_info, C1, #{})
+                    ),
+
+    C2 = C1#{
+           protocol_version => <<"5.1">>,
+           language_info => LanguageInfo
+          },
+
+    {ok, C2};
 
 
 do_process(Name, _Source, <<"execute_request">>, Msg) ->
@@ -197,6 +195,7 @@ do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
 do_process(Name, _Source, <<"shutdown_request">>, _Msg) ->
     % Ignore restart for now
     jup_kernel_sup:stop(Name),
+    init:stop(0),
     noreply;
 
 

@@ -36,6 +36,8 @@
                      StackTrace :: [binary()] | binary()}.
 
 
+-callback do_kernel_info(State :: term()) -> callback_res(map()).
+
 -callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
                      State::term())
     -> callback_res({ok, jup_display:type()} | exec_err()).
@@ -83,6 +85,7 @@
           exec_queue = [] :: [tuple()],
           exec_counter = 0 :: integer(),
 
+          do_kernel_info :: function() | undefined,
           do_execute :: function() | undefined,
           do_complete :: function() | undefined,
           do_is_complete :: function() | undefined,
@@ -115,8 +118,8 @@ exec_counter(Name) ->
 execute(Name, Code, Silent, StoreHistory, Msg) ->
     do_call(Name, {execute, Code, Silent, StoreHistory, Msg}).
 
-kernel_info(Name, Msg) ->
-    do_call(Name, {kernel_info, Msg}).
+kernel_info(Name, _Msg) ->
+    do_call(Name, do_kernel_info, []).
 is_complete(Name, Code, Msg) ->
     do_call(Name, do_is_complete, [Code, Msg]).
 complete(Name, Code, CursorPos, Msg) ->
@@ -170,7 +173,8 @@ init([Name, Node, Backend, BackendArgs]) ->
             do_execute=Get(do_execute, 4),
             do_complete=Get(do_complete, 4),
             do_inspect=Get(do_inspect, 5),
-            do_is_complete=Get(do_is_complete, 3)
+            do_is_complete=Get(do_is_complete, 3),
+            do_kernel_info=Get(do_kernel_info, 1)
            }
     }.
 
@@ -209,7 +213,7 @@ handle_call(exec_counter, _From, State) ->
 
 handle_call(Action, From, State)
   when State#state.got_initial_state =:= false ->
-    lager:debug("Enqueueing action ~p"),
+    lager:debug("Enqueueing action ~p", [Action]),
     {noreply,
      State#state{exec_queue=[{Action, From} | State#state.exec_queue]}
     };
@@ -236,7 +240,9 @@ handle_call({call, Name, Args}, _From, State) ->
               do_inspect ->
                   ?FWD_CALL(do_inspect, Args, State);
               do_complete ->
-                  ?FWD_CALL(do_complete, Args, State)
+                  ?FWD_CALL(do_complete, Args, State);
+              do_kernel_info ->
+                  ?FWD_CALL(do_kernel_info, Args, State)
           end,
 
     {reply, Res, State};
