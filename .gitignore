@@ -2,7 +2,8 @@
 *.o
 *.beam
 *.plt
-erl_crash.dump
+.*.sw[po]
+*_crash.dump
 _build/
 log/
 tmp/
