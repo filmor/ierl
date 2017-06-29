@@ -35,8 +35,8 @@ language() ->
 
 init(Args) ->
     ElixirPath = get_elixir_path(Args),
-    ElixirAppPath = filename:join([ElixirPath, lib, elixir, ebin]),
-    IExAppPath = filename:join([ElixirPath, lib, iex, ebin]),
+    ElixirAppPath = filename:join([ElixirPath, elixir, ebin]),
+    IExAppPath = filename:join([ElixirPath, iex, ebin]),
 
     code:add_path(ElixirAppPath),
     code:add_path(IExAppPath),
@@ -142,7 +142,8 @@ split_arity(Str) ->
 get_elixir_path(Args) ->
     case maps:find(path, Args) of
         error ->
-            "c:/Program Files (x86)/Elixir";
+            ExPath = os:cmd("elixir -e 'IO.write(:code.lib_dir(:elixir))'"),
+            ierl_util:simplify(filename:join(ExPath, ".."));
         {ok, Value} ->
             Value
     end.

@@ -121,7 +121,7 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
     application:set_env(lager, suppress_supervisor_start_stop, true),
 
     {ok, _} = application:ensure_all_started(lager),
-    lager:set_loglevel(lager_console_backend, debug),
+    lager:set_loglevel(lager_console_backend, error),
 
     {_, Spec} = get_opts(Command),
     {_, _BSpec} = get_opts(Backend),
