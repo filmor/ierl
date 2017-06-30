@@ -100,7 +100,7 @@ do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
                     ),
 
     C2 = C1#{
-           protocol_version => <<"5.1">>,
+           protocol_version => <<"5.2">>,
            language_info => LanguageInfo
           },
 
