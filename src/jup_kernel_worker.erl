@@ -63,7 +63,8 @@ loop(State) ->
                 State#state{backend_state=NewState}
             catch
                 Type:Reason ->
-                    State#state.pid ! {Ref, exec_error, {Type, Reason}}
+                    State#state.pid ! {Ref, exec_error, {Type, Reason}},
+                    State
             end
     end,
     loop(State1).
