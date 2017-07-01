@@ -68,6 +68,7 @@ do_status(Name, Status, Parent) ->
 
 
 do_iopub(Name, MsgType, Msg, Parent) ->
+    lager:debug("Publishing IO ~p:~n~p", [MsgType, Msg]),
     jup_kernel_iopub_srv:send(
       Name,
       jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType)

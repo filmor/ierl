@@ -12,7 +12,7 @@
         kernel_info/2,
         is_complete/3,
         complete/4,
-        inspect/4
+        inspect/5
        ]).
 
 
@@ -36,7 +36,8 @@
                      StackTrace :: [binary()] | binary()}.
 
 
--callback do_kernel_info(State :: term()) -> callback_res(map()).
+-callback do_kernel_info(Msg :: #jup_msg{}, State :: term())
+    -> callback_res(map()).
 
 -callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
                      State::term())
@@ -93,12 +94,12 @@
          }).
 
 
--define(FWD_CALL(Name, Args, State),
+-define(FWD_CALL(Name, Args, Msg, State),
         case State#state.Name of
             undefined ->
                 not_implemented;
             Fun ->
-                Fun(Args)
+                Fun(Args, Msg)
         end
        ).
 
@@ -118,14 +119,14 @@ exec_counter(Name) ->
 execute(Name, Code, Silent, StoreHistory, Msg) ->
     do_call(Name, {execute, Code, Silent, StoreHistory, Msg}).
 
-kernel_info(Name, _Msg) ->
-    do_call(Name, do_kernel_info, []).
+kernel_info(Name, Msg) ->
+    do_call(Name, do_kernel_info, [], Msg).
 is_complete(Name, Code, Msg) ->
-    do_call(Name, do_is_complete, [Code, Msg]).
+    do_call(Name, do_is_complete, [Code], Msg).
 complete(Name, Code, CursorPos, Msg) ->
-    do_call(Name, do_complete, [Code, CursorPos, Msg]).
-inspect(Name, Code, CursorPos, DetailLevel) ->
-    do_call(Name, do_inspect, [Code, CursorPos, DetailLevel]).
+    do_call(Name, do_complete, [Code, CursorPos], Msg).
+inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
+    do_call(Name, do_inspect, [Code, CursorPos, DetailLevel], Msg).
 
 
 init([Name, Node, Backend, BackendArgs]) ->
@@ -141,9 +142,9 @@ init([Name, Node, Backend, BackendArgs]) ->
     fun (FName, Arity) ->
             case erlang:function_exported(Backend, FName, Arity) of
                 true ->
-                    fun (Args) when length(Args) =:= Arity - 1 ->
+                    fun (Args, Msg) when length(Args) =:= Arity - 2 ->
                             Ref = make_ref(),
-                            WorkerPid ! {call, Ref, FName, Args},
+                            WorkerPid ! {call, Ref, FName, Args, Msg},
 
                             receive
                                 {Ref, Result} ->
@@ -155,6 +156,13 @@ init([Name, Node, Backend, BackendArgs]) ->
                 _ ->
                     undefined
             end
+    end,
+
+    case erlang:function_exported(Backend, do_kernel_info, 2) of
+        false ->
+            error({must_define_kernel_info, Backend});
+        _ ->
+            ok
     end,
 
     case erlang:function_exported(Backend, do_execute, 4) of
@@ -174,7 +182,7 @@ init([Name, Node, Backend, BackendArgs]) ->
             do_complete=Get(do_complete, 4),
             do_inspect=Get(do_inspect, 5),
             do_is_complete=Get(do_is_complete, 3),
-            do_kernel_info=Get(do_kernel_info, 1)
+            do_kernel_info=Get(do_kernel_info, 2)
            }
     }.
 
@@ -227,22 +235,22 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    Res1 = (State#state.do_execute)([Code, undefined, Msg]),
+    Res1 = (State#state.do_execute)([Code, undefined], Msg),
     State1 = State#state{exec_counter=ExecCounter},
 
     {reply, {Res1, ExecCounter, #{}}, State1};
 
 
-handle_call({call, Name, Args}, _From, State) ->
+handle_call({call, Name, Args, Msg}, _From, State) ->
     Res = case Name of
               do_is_complete ->
-                  ?FWD_CALL(do_is_complete, Args, State);
+                  ?FWD_CALL(do_is_complete, Args, Msg, State);
               do_inspect ->
-                  ?FWD_CALL(do_inspect, Args, State);
+                  ?FWD_CALL(do_inspect, Args, Msg, State);
               do_complete ->
-                  ?FWD_CALL(do_complete, Args, State);
+                  ?FWD_CALL(do_complete, Args, Msg, State);
               do_kernel_info ->
-                  ?FWD_CALL(do_kernel_info, Args, State)
+                  ?FWD_CALL(do_kernel_info, Args, Msg, State)
           end,
 
     {reply, Res, State};
@@ -261,5 +269,5 @@ terminate(_Reason, _State) ->
 do_call(Name, Call) ->
     gen_server:call(?JUP_VIA(Name, backend), Call, infinity).
 
-do_call(Name, Func, Args) ->
-    gen_server:call(?JUP_VIA(Name, backend), {call, Func, Args}, infinity).
+do_call(Name, Func, Args, Msg) ->
+    gen_server:call(?JUP_VIA(Name, backend), {call, Func, Args, Msg}, infinity).

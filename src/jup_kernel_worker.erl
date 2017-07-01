@@ -49,9 +49,10 @@ start_loop(Pid, IOPid, Backend, BackendArgs) ->
 loop(State) ->
     State1 =
     receive
-        {call, Ref, Func, Args} ->
+        {call, Ref, Func, Args, Msg} ->
+            io:setopts([{jup_msg, Msg}]),
             try
-                Args1 = Args ++ [State#state.backend_state],
+                Args1 = Args ++ [Msg, State#state.backend_state],
 
                 {Res, NewState} =
                 case erlang:apply(State#state.backend, Func, Args1) of
