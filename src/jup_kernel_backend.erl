@@ -234,10 +234,17 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    Res1 = (State#state.do_execute)([Code], Msg),
-    State1 = State#state{exec_counter=ExecCounter},
+    Res = (State#state.do_execute)([Code], Msg),
 
-    {reply, {Res1, ExecCounter, #{}}, State1};
+    State1 =
+    case Res of
+        {error, _, _, _} ->
+            State;
+        _ ->
+            State#state{exec_counter=ExecCounter}
+    end,
+
+    {reply, {Res, ExecCounter, #{}}, State1};
 
 
 handle_call({call, Name, Args, Msg}, _From, State) ->

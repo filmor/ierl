@@ -168,7 +168,6 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
 
         {error, Type, Reason, Stacktrace} ->
             ResMsg = #{
-              execution_count => ExecCounter,
               ename => jup_util:ensure_binary(Type),
               evalue => jup_util:ensure_binary(Reason),
               traceback => [jup_util:ensure_binary(Row) || Row <- Stacktrace]
