@@ -81,7 +81,7 @@ do_execute(Code, _Publish, _Msg, State) ->
             case Error of
                 #{
                     '__struct__' := Type1,
-                    'description' := Reason
+                    message := Reason
                 } ->
                     {{error, Type1, Reason,
                       ['Elixir.Exception':format(error, Error)]},
@@ -142,7 +142,7 @@ split_arity(Str) ->
 get_elixir_path(Args) ->
     case maps:find(path, Args) of
         error ->
-            ExPath = os:cmd("elixir -e 'IO.write(:code.lib_dir(:elixir))'"),
+            ExPath = os:cmd("elixir -e \"IO.write(:code.lib_dir(:elixir))\""),
             ierl_util:simplify(filename:join(ExPath, ".."));
         {ok, Value} ->
             Value
