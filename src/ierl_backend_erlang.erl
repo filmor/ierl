@@ -5,7 +5,7 @@
 
 -export([
          init/1,
-         do_kernel_info/1,
+         do_kernel_info/2,
          do_execute/4,
          do_is_complete/3,
          do_complete/4,
@@ -32,7 +32,7 @@ init(_Args) ->
       }.
 
 
-do_kernel_info(State) ->
+do_kernel_info(_Msg, State) ->
     Content =
     #{
       implementation => ?MODULE,
