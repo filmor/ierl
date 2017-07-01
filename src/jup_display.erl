@@ -1,7 +1,9 @@
 -module(jup_display).
 
 -export([
-         to_map/1
+         to_map/1,
+         display/1,
+         update/2
         ]).
 
 -export_type([
@@ -40,3 +42,14 @@ mimetype_to_binary(html) ->
     <<"text/html">>;
 mimetype_to_binary(Binary) when is_binary(Binary) ->
     Binary.
+
+
+-spec display(type()) -> reference().
+display(Obj) ->
+    % Only works correctly when the io driver is jup_kernel_io
+    io:request({jup_display, new, to_map(Obj)}).
+
+
+-spec update(reference(), type()) -> ok.
+update(Ref, Obj) ->
+    io:request({jup_display, Ref, to_map(Obj)}).

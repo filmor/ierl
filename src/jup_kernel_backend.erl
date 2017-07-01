@@ -39,8 +39,7 @@
 -callback do_kernel_info(Msg :: #jup_msg{}, State :: term())
     -> callback_res(map()).
 
--callback do_execute(Code::binary(), Publish::function(), Msg::#jup_msg{},
-                     State::term())
+-callback do_execute(Code::binary(), Msg::#jup_msg{}, State::term())
     -> callback_res({ok, jup_display:type()} | exec_err()).
 
 
@@ -165,7 +164,7 @@ init([Name, Node, Backend, BackendArgs]) ->
             ok
     end,
 
-    case erlang:function_exported(Backend, do_execute, 4) of
+    case erlang:function_exported(Backend, do_execute, 3) of
         false ->
             error({must_define_execute, Backend});
         _ ->
@@ -178,7 +177,7 @@ init([Name, Node, Backend, BackendArgs]) ->
             backend=Backend,
             worker_pid=WorkerPid,
 
-            do_execute=Get(do_execute, 4),
+            do_execute=Get(do_execute, 3),
             do_complete=Get(do_complete, 4),
             do_inspect=Get(do_inspect, 5),
             do_is_complete=Get(do_is_complete, 3),
@@ -235,7 +234,7 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                           State#state.exec_counter + 1
                   end,
 
-    Res1 = (State#state.do_execute)([Code, undefined], Msg),
+    Res1 = (State#state.do_execute)([Code], Msg),
     State1 = State#state{exec_counter=ExecCounter},
 
     {reply, {Res1, ExecCounter, #{}}, State1};

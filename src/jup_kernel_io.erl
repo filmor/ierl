@@ -82,12 +82,14 @@ code_change(_OldVsn, State, _Extra) ->
 
 
 request({put_chars, Encoding, Chars}, State) ->
-    put_chars(
-      list_to_binary(unicode:characters_to_list(Chars, Encoding)),
-      State
-     );
+    Res = put_chars(
+            list_to_binary(unicode:characters_to_list(Chars, Encoding)),
+            State
+           ),
+    {Res, State};
 
-request({put_chars, Encoding, Module, Function, Args}, State) ->
+request({put_chars, Encoding, Module, Function, Args} = _L, State) ->
+    lager:info("Called put_chars as ~p", [_L]),
     request({put_chars, Encoding, apply(Module, Function, Args)}, State);
 
 request({request, Requests}, State) when is_list(Requests) ->
@@ -99,7 +101,11 @@ request({setopts, Opts}, State) ->
 request(getopts, State) ->
     {{ok, State#state.opts}, State};
 
-request(_, State) ->
+request({jup_display, RefOrNew, Map}, State) ->
+    {display(RefOrNew, Map, State), State};
+
+request(_Req, State) ->
+    lager:debug("Unhandled IO request: ~p", [_Req]),
     {{error, request}, State}.
 
 
@@ -116,7 +122,7 @@ multi_request([], Result) ->
 put_chars(Chars, State) ->
     case proplists:get_value(jup_msg, State#state.opts) of
         undefined ->
-            ok;
+            {error, no_jup_msg_found};
         Msg ->
             jup_kernel_protocol:do_iopub(
               State#state.name,
@@ -126,6 +132,38 @@ put_chars(Chars, State) ->
                 text => Chars
                },
               Msg
-             )
-    end,
-    {ok, State}.
+             ),
+            ok
+    end.
+
+
+display(new, Map, State) ->
+    Ref = jup_util:get_uuid(),
+    case display(Ref, Map, <<"display_data">>, State) of
+        ok ->
+            {ok, Ref};
+        Else ->
+            Else
+    end;
+
+display(Ref, Map, State) ->
+    display(Ref, Map, <<"update_display_data">>, State).
+
+
+display(Ref, Map, MsgType, State) ->
+    case proplists:get_value(jup_msg, State#state.opts) of
+        undefined ->
+            {error, no_jup_msg_found};
+        Msg ->
+            jup_kernel_protocol:do_iopub(
+              State#state.name,
+              MsgType,
+              #{
+                data => Map,
+                metadata => #{},
+                transient => #{ display_id => Ref }
+              },
+              Msg
+             ),
+            ok
+    end.

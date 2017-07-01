@@ -5,6 +5,8 @@
          ensure_binary/1,
          hexlify/1,
 
+         get_uuid/0,
+
          call_if_exported/3,
          call_if_exported/4,
 
@@ -45,6 +47,11 @@ hex(C) when C < 10 -> $0 + C;
 hex(C) -> $a + C - 10.
 
 
+-spec get_uuid() -> binary().
+get_uuid() ->
+    jup_util:ensure_binary(uuid:uuid_to_string(uuid:get_v4())).
+
+
 -spec call_if_exported(module(), atom(), list()) -> term().
 call_if_exported(Module, Func, Args) ->
     call_if_exported(Module, Func, Args, undefined).
@@ -68,7 +75,9 @@ copy_to_node(Node, Backend) ->
         true ->
             code:ensure_modules_loaded([Backend] ++ Deps);
         _ ->
-            do_copy_to_node(Node, [jup_kernel_worker, Backend] ++ Deps)
+            do_copy_to_node(
+              Node, [jup_kernel_worker, jup_display, Backend] ++ Deps
+             )
     end.
 
 
