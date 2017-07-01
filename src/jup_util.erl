@@ -76,7 +76,7 @@ copy_to_node(Node, Backend) ->
             code:ensure_modules_loaded([Backend] ++ Deps);
         _ ->
             do_copy_to_node(
-              Node, [jup_kernel_worker, jup_display, Backend] ++ Deps
+              Node, [jup_kernel_worker, jup_display, jup_util, Backend] ++ Deps
              )
     end.
 
