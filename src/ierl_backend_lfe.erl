@@ -67,7 +67,12 @@ do_execute(Code, _Msg, State) ->
             Stacktrace = format_stacktrace(erlang:get_stacktrace()),
             Reason1 = jup_util:ensure_binary(io_lib:format("~p", [Reason])),
 
-            {{error, Type, Reason1, Stacktrace}, State}
+            St = [
+                  io_lib:format("~s:~s~n~nStacktrace:~n", [Type, Reason1])
+                  | Stacktrace
+                 ],
+
+            {{error, Type, Reason1, St}, State}
     end.
 
 

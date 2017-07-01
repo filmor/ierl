@@ -55,16 +55,21 @@ do_execute(Code, _Msg, State) ->
         {{ok, Str}, State1}
     catch
         Type:Reason ->
-            lager:error("Error: ~p:~p", [Type, Reason]),
-            Stacktrace = [
-                          list_to_binary(io_lib:format("~p", [Item])) ||
-                          Item <- erlang:get_stacktrace()
-                         ],
+            lager:debug("Error: ~p:~p", [Type, Reason]),
+            Stacktrace = lager:pr_stacktrace(
+                           erlang:get_stacktrace()
+                          ),
+
             Reason1 = list_to_binary(
                         io_lib:format("~p", [Reason])
                        ),
 
-            {{error, Type, Reason1, Stacktrace}, State}
+            St = [
+                  io_lib:format("~s:~s~n~nStacktrace:", [Type, Reason1]),
+                  Stacktrace
+                 ],
+
+            {{error, Type, Reason1, St}, State}
     end.
 
 

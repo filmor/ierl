@@ -78,17 +78,11 @@ do_execute(Code, _Msg, State) ->
         {{ok, Res1}, State#state{bindings=NewBindings}}
     catch
         Type:Error ->
-            case Error of
-                #{
-                    '__struct__' := Type1,
-                    message := Reason
-                } ->
-                    {{error, Type1, Reason,
-                      ['Elixir.Exception':format(error, Error)]},
-                     State};
-                _ ->
-                    {{error, Type, Error, []}, State}
-            end
+            Normalized = 'Elixir.Exception':normalize(Type, Error),
+            Msg = 'Elixir.Exception':message(Normalized),
+            Formatted = 'Elixir.Exception':format(Type, Normalized),
+
+            {{error, Type, Msg, [Formatted]}, State}
     end.
 
 
