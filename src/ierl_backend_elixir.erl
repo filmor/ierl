@@ -6,7 +6,7 @@
 -export([
          init/1,
          do_kernel_info/2,
-         do_execute/4,
+         do_execute/3,
          do_is_complete/3,
          do_complete/4,
          opt_spec/0,
@@ -68,7 +68,7 @@ do_kernel_info(_Msg, State) ->
     {Content, State}.
 
 
-do_execute(Code, _Publish, _Msg, State) ->
+do_execute(Code, _Msg, State) ->
     try
         {Res, NewBindings} =
             'Elixir.Code':eval_string(Code, State#state.bindings),
