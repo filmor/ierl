@@ -153,6 +153,7 @@ display(Ref, Map, State) ->
 display(Ref, Map, MsgType, State) ->
     case proplists:get_value(jup_msg, State#state.opts) of
         undefined ->
+            lager:info("~p", [Map]),
             {error, no_jup_msg_found};
         Msg ->
             jup_kernel_protocol:do_iopub(

@@ -61,7 +61,7 @@ call_if_exported(Module, Func, Args) ->
 call_if_exported(Module, Func, Args, Default) ->
     case erlang:function_exported(Module, Func, length(Args)) of
         true ->
-            Module:Func(Args);
+            erlang:apply(Module, Func, Args);
         _ ->
             Default
     end.
@@ -75,9 +75,11 @@ copy_to_node(Node, Backend) ->
         true ->
             code:ensure_modules_loaded([Backend] ++ Deps);
         _ ->
-            do_copy_to_node(
-              Node, [jup_kernel_worker, jup_display, jup_util, Backend] ++ Deps
-             )
+            Deps1 = [jup_kernel_worker, jup_display, jup_util, Backend] ++ Deps,
+
+            lager:debug("Copying ~p to ~p", [Node, Deps1]),
+
+            do_copy_to_node(Node, Deps1)
     end.
 
 

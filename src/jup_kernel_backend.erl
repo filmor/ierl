@@ -129,7 +129,7 @@ inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
 
 
 init([Name, Node, Backend, BackendArgs]) ->
-    WorkerPid =
+    {ok, WorkerPid} =
     case Node =:= node() of
         true ->
             jup_kernel_worker:start_link(Name, Backend, BackendArgs);
@@ -148,8 +148,10 @@ init([Name, Node, Backend, BackendArgs]) ->
                             receive
                                 {Ref, Result} ->
                                     Result;
-                                {Ref, exec_error, {Type, Reason}} ->
-                                    {error, Type, Reason, [<<"internal">>]}
+                                {Ref, exec_error, {Type, Reason, St}} ->
+                                    lager:error("~p:~p~n~p", [Type, Reason,
+                                                              St]),
+                                    {error, Type, Reason, St}
                             end
                     end;
                 _ ->

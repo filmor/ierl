@@ -1,10 +1,20 @@
 -module(jup_kernel_worker).
 
+-behaviour(gen_server).
 
 -export([
          start_link/3,
-         start_link/4,
-         start_loop/4
+         start_link/4
+        ]).
+
+
+-export([
+         init/1,
+         handle_call/3,
+         handle_info/2,
+         handle_cast/2,
+         terminate/2,
+         code_change/3
         ]).
 
 
@@ -18,7 +28,9 @@
 -spec start_link(jupyter:name(), module(), list()) -> pid().
 start_link(Name, Backend, BackendArgs) ->
     IOPid = jup_kernel_io:get_pid(Name),
-    spawn_link(?MODULE, start_loop, [self(), IOPid, Backend, BackendArgs]).
+    Args = [self(), IOPid, Backend, BackendArgs],
+
+    gen_server:start_link(?MODULE, Args, []).
 
 
 -spec start_link(atom(), atom(), module(), list()) -> pid().
@@ -28,11 +40,13 @@ start_link(Name, Node, Backend, BackendArgs) ->
     % loaded from here and didn't exist before.
     IOPid = jup_kernel_io:get_pid(Name),
     jup_util:copy_to_node(Node, Backend),
-    spawn_link(Node, ?MODULE, start_loop, [self(), IOPid, Backend, BackendArgs]).
+    Args = [self(), IOPid, Backend, BackendArgs],
+
+    rpc:call(Node, gen_server, start_link, [?MODULE, Args, []]).
 
 
--spec start_loop(pid(), pid(), module(), list()) -> no_return().
-start_loop(Pid, IOPid, Backend, BackendArgs) ->
+init([Pid, IOPid, Backend, BackendArgs]) ->
+    % process_flag(trap_exit, true),
     erlang:group_leader(IOPid, self()),
     State = #state{
                pid=Pid,
@@ -42,30 +56,49 @@ start_loop(Pid, IOPid, Backend, BackendArgs) ->
 
     Pid ! init_complete,
 
-    loop(State).
+    {ok, State}.
 
 
--spec loop(#state{}) -> no_return().
-loop(State) ->
-    State1 =
-    receive
-        {call, Ref, Func, Args, Msg} ->
-            io:setopts([{jup_msg, Msg}]),
-            try
-                Args1 = Args ++ [Msg, State#state.backend_state],
+handle_info({call, Ref, Func, Args, Msg}, State) ->
+    S1 =
+    try
+        io:setopts([{jup_msg, Msg}]),
+        Args1 = Args ++ [Msg, State#state.backend_state],
 
-                {Res, NewState} =
-                case erlang:apply(State#state.backend, Func, Args1) of
-                    {R, S} -> {R, S};
-                    {R, _Extra, S} -> {R, S}
-                end,
+        {Res, NewState} =
+        case erlang:apply(State#state.backend, Func, Args1) of
+            {R, S} -> {R, S};
+            {R, _Extra, S} -> {R, S}
+        end,
 
-                State#state.pid ! {Ref, Res},
-                State#state{backend_state=NewState}
-            catch
-                Type:Reason ->
-                    State#state.pid ! {Ref, exec_error, {Type, Reason}},
-                    State
-            end
+        State#state.pid ! {Ref, Res},
+        State#state{backend_state=NewState}
+    catch
+        Type:Reason ->
+            State#state.pid !
+            {Ref, exec_error, {Type, Reason, erlang:get_stacktrace()}},
+            State
     end,
-    loop(State1).
+
+    {noreply, S1};
+
+handle_info(_Else, State) ->
+    % io:write(_Else),
+    % State#state.pid ! {log, _Else},
+    {noreply, State}.
+
+
+handle_cast(Cast, _State) ->
+    error({invalid_cast, Cast}).
+
+
+handle_call(Call, _From, _State) ->
+    error({invalid_call, Call}).
+
+
+terminate(_Reason, _State) ->
+    ok.
+
+
+code_change(_OldVsn, State, _Extra) ->
+    State.
