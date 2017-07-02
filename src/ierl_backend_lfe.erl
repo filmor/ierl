@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         deps/0,
          do_kernel_info/2,
          do_execute/3,
          do_is_complete/3,
@@ -35,12 +36,16 @@ init(_Args) ->
     #state{env=lfe_env:new()}.
 
 
+deps() ->
+    [ierl_versions].
+
+
 do_kernel_info(_Msg, State) ->
     Content =
     #{
       implementation => ?MODULE,
       implementation_version => ierl_versions:get_app_version(ierl),
-      banner => <<"Elixir Jupyter Kernel">>,
+      banner => <<"LFE Jupyter Kernel">>,
       language_info => #{
         name => lfe,
         version => ierl_versions:get_app_version(lfe),

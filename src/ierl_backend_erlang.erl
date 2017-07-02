@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         deps/0,
          do_kernel_info/2,
          do_execute/3,
          do_is_complete/3,
@@ -32,6 +33,10 @@ init(_Args) ->
       }.
 
 
+deps() ->
+    [ierl_versions, lager, error_logger_lager_h, lager_trunc_io].
+
+
 do_kernel_info(_Msg, State) ->
     Content =
     #{
@@ -55,7 +60,7 @@ do_execute(Code, _Msg, State) ->
         {{ok, Str}, State1}
     catch
         Type:Reason ->
-            lager:debug("Error: ~p:~p", [Type, Reason]),
+            % lager:debug("Error: ~p:~p", [Type, Reason]),
             Stacktrace = lager:pr_stacktrace(
                            erlang:get_stacktrace()
                           ),

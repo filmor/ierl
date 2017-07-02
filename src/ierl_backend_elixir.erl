@@ -5,6 +5,7 @@
 
 -export([
          init/1,
+         deps/0,
          do_kernel_info/2,
          do_execute/3,
          do_is_complete/3,
@@ -49,6 +50,10 @@ init(Args) ->
     'Elixir.Code':string_to_quoted(":undefined"),
 
     #state{}.
+
+
+deps() ->
+    [ierl_versions].
 
 
 do_kernel_info(_Msg, State) ->
