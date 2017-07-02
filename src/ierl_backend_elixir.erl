@@ -53,7 +53,7 @@ init(Args) ->
 
 
 deps() ->
-    [ierl_versions].
+    [ierl_versions, ierl_util].
 
 
 do_kernel_info(_Msg, State) ->
