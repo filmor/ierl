@@ -1,5 +1,7 @@
 # BEAM Jupyter Kernels Tool
 
+[![Build Status](https://travis-ci.org/filmor/ierl.svg?branch=master)](https://travis-ci.org/filmor/ierl)
+
 `ierl` is a command line tool based on [erlang-jupyter](https://github.com/filmor/erlang-jupyter) to allow running and installing
 Jupyter kernels on the Erlang Virtual Machine.
 

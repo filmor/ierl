@@ -1,0 +1,28 @@
+language: elixir
+matrix:
+  include:
+    - elixir: 1.4.5
+      otp_release: 19.3
+
+dist: trusty
+sudo: required
+
+branches:
+  only:
+    - master
+
+before_install:
+  - sudo apt-get install python3-pip python-dev
+  - sudo apt-get install libzmq3-dev
+  - ./_download_rebar3.sh
+  - ./_checkout_jupyter.sh
+
+install:
+  - sudo pip3 install -U jupyter_kernel_test
+  - sudo pip3 install -U pytest
+  - ./rebar3 get-deps
+
+script:
+  # - ./rebar3 xref
+  # - ./rebar3 dialyzer
+  - ./test.sh
