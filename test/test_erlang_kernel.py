@@ -1,8 +1,8 @@
 import unittest
 import jupyter_kernel_test as jkt
 
-class IErlangKernelTests(jkt.KernelTests):
-    kernel_name = "erlang"
+class ErlangKernelTests(jkt.KernelTests):
+    kernel_name = "erlang_test"
 
     language_name = "erlang"
 
@@ -38,7 +38,7 @@ class IErlangKernelTests(jkt.KernelTests):
     code_generate_error = "error(blubb)."
 
     code_execute_result = [
-        {'code': "1+2+3.", 'result': "6"}
+        {'code': "1+2+3.", 'result': "6\n"}
     ]
 
     code_display_data = [

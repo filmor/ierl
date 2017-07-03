@@ -46,7 +46,7 @@ do_kernel_info(_Msg, State) ->
       language_info => #{
         name => erlang,
         version => ierl_versions:get_otp_version(),
-        file_extension => erl
+        file_extension => <<".erl">>
        }
      },
 

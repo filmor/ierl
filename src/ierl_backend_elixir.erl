@@ -65,7 +65,7 @@ do_kernel_info(_Msg, State) ->
       language_info => #{
         name => elixir,
         version => ierl_versions:get_app_version(elixir),
-        file_extension => ex,
+        file_extension => <<".ex">>,
         codemirror_mode => ruby
        }
      },

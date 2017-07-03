@@ -49,9 +49,9 @@ do_kernel_info(_Msg, State) ->
       language_info => #{
         name => lfe,
         version => ierl_versions:get_app_version(lfe),
-        file_extension => lfe,
+        file_extension => <<".lfe">>,
         codemirror_mode => <<"commonlisp">>,
-        pygments_lexer => <<"pygments.lexers.lisp.CommonLispLexer">>
+        pygments_lexer => <<"commonlisp">>
        }
      },
 
