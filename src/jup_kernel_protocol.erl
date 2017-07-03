@@ -175,7 +175,7 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
 
             do_iopub(Name, error, ResMsg, Msg),
 
-            {error, ResMsg}
+            {error, ResMsg#{ execution_count => ExecCounter }}
     end;
 
 
