@@ -33,6 +33,24 @@ highlighting is currently just straight Common Lisp, which means quite a few
 things are not highlighted correctly (like `defmodule`, `defrecord`, atoms,
 etc.).
 
+## Common functionality
+
+All kernels can access the `jup_display` functions to print non-text output (in
+particular on the Jupyter Notebook):
+
+    % Print 
+    DisplayRef = jup_display:display(#{ html => "<h1>Some Text</h1>" }).
+
+The key of the passed map is either `html`, `text`, or a binary or string
+indicating an actual MIME type like `text/html`. The value is an IO list with
+data matching the MIME type. A displayed value can be updated within the same
+cell by using the returned reference:
+
+    jup_display:update(DisplayRef, #{ html => "<h1>Updated Text</h1>" }).
+
+Currently, the Jupyter Notebook will also update output sections that were
+initialised before, but it's not specified, whether this implementation detail
+will stay.
 
 # Usage
 
@@ -57,7 +75,10 @@ cookie to use via `--cookie`.
 
     ./ierl install erlang --node remote_node@REMOTEHOST --cookie my_secret_cookie
 
-The installed kernels will be immediately avaialable in the Jupyter Notebook, to
+If no name is given, it will be inferred from the kernel name and the node the
+kernel is supposed to run against.
+
+The installed kernels will be immediately available in the Jupyter Notebook, to
 use them in the console run
 
     jupyter console --kernel my_erlang_kernel
