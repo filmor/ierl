@@ -15,8 +15,9 @@
 
 
 -record(state, {
-          bindings,
-          modules
+          bindings :: erl_eval:bindings(),
+          records :: map(),
+          modules :: map()
          }).
 
 
@@ -29,7 +30,8 @@ opt_spec() ->
 
 init(_Args) ->
     #state{
-       bindings=erl_eval:new_bindings()
+       bindings=erl_eval:new_bindings(),
+       records=#{}
       }.
 
 
@@ -56,6 +58,7 @@ do_kernel_info(_Msg, State) ->
 do_execute(Code, _Msg, State) ->
     try
         {Value, State1} = evaluate(binary_to_list(Code), State),
+        % TODO: Format records
         Str = iolist_to_binary(io_lib:format("~p~n", [Value])),
         {{ok, Str}, State1}
     catch
@@ -111,9 +114,28 @@ evaluate(Expression, State) ->
     case is_module(Tokens) of
         false ->
             {ok, Parsed} = erl_parse:parse_exprs(Tokens),
-            {value, Result, Bindings1} = erl_eval:exprs(Parsed,
-                                                        State#state.bindings),
-            {Result, State#state{bindings=Bindings1}};
+
+            Records = State#state.records,
+
+            Bindings = erl_eval:add_binding(
+                         '_records', Records, State#state.bindings
+                        ),
+
+            {value, Result, Bindings1} =
+                erl_eval:exprs(Parsed, Bindings, {eval, fun local_func/3}),
+
+            Records1 =
+            case erl_eval:binding('_records', Bindings1) of
+                unbound ->
+                    Records;
+                {value, R} ->
+                    R
+            end,
+
+            Bindings2 = erl_eval:del_binding('_records', Bindings1),
+
+            {Result, State#state{bindings=Bindings2, records=Records1}};
+
         ModuleName ->
             {compile_module(ModuleName, Tokens, State), State}
     end.
@@ -131,6 +153,8 @@ compile_module(ModuleName, Tokens, _State) ->
                    [],
                    Tokens
                   ),
+
+    % TODO: Capture all records and add them to the global record map
 
     ParseRes = [erl_parse:parse_form(Tokens1) || Tokens1 <- FormGroups],
 
@@ -209,3 +233,12 @@ check_is_complete([{Token, _}|Tail], Stack) ->
         _ ->
             check_is_complete(Tail, [Add|Stack])
     end.
+
+local_func(f, [], _Bindings) ->
+    {value, ok, erl_eval:new_bindings()};
+
+local_func(f, [{var, _, Name}], Bindings) ->
+    {value, ok, erl_eval:del_binding(Name, Bindings)};
+
+local_func(_Other, _Args, _Bindings) ->
+    error(function_clause, _Other).
