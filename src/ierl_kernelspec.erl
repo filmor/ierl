@@ -63,7 +63,13 @@ build(ScriptPath, Backend, Options) ->
     end,
 
     Argv = [
-            path_to_binary(get_escript_bin()),
+            path_to_binary(get_erl_bin()),
+            <<"+B">>, <<"-boot">>, <<"start_clean">>,
+            <<"-noshell">>,
+            <<"-escript">>, <<"main">>,
+            <<"-pz">>, <<"ierl/ierl/ebin">>,
+            <<"-run">>, <<"escript">>, <<"start">>,
+            <<"-extra">>,
             path_to_binary(ScriptPath1),
             <<"kernel">>,
             Backend,
@@ -124,10 +130,10 @@ getenv(Name) when is_list(Name) ->
     end.
 
 
--spec get_escript_bin() -> file:filename_all().
-get_escript_bin() ->
+-spec get_erl_bin() -> file:filename_all().
+get_erl_bin() ->
     {ok, [[Root]]} = init:get_argument(root),
-    filename:join([Root, "bin", "escript"]).
+    filename:join([Root, "bin", "erl"]).
 
 
 -spec path_to_binary(file:filename_all()) -> binary().
