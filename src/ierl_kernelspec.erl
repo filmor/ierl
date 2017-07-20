@@ -2,7 +2,7 @@
 
 -export([
          write/2,
-         build/2
+         build/3
         ]).
 
 
@@ -33,18 +33,23 @@ write(Name, FileMap) ->
      ).
 
 
--spec build(module(), map()) -> map().
-build(Backend, Options) ->
-    build(filename:absname(escript:script_name()), Backend, Options).
+-spec build(atom(), module(), map()) -> map().
+build(Backend, BackendModule, Options) ->
+    build(filename:absname(escript:script_name()), Backend, BackendModule,
+          Options).
 
 
--spec build(file:filename_all(), module(), map()) -> map().
-build(ScriptPath, Backend, Options) ->
+-spec build(file:filename_all(), atom(), module(), map()) -> map().
+build(ScriptPath, Backend, BackendModule, Options) ->
+    BackendName = Backend,
+    % TODO: Attach node name if specified
+
+    % TODO: This must be passed from outside
     Root = filename:join([get_user_path(), Backend]),
 
     Args = case maps:find(args, Options) of
                % TODO Process Args
-               {ok, Value} -> Value;
+               {ok, Value} -> process_args(Value);
                _ -> []
            end,
 
@@ -74,16 +79,25 @@ build(ScriptPath, Backend, Options) ->
             <<"kernel">>,
             Backend,
             <<"-f">>, <<"{connection_file}">>
-           ] ++ Args,
+           ],
+
+    Argv1 = case Args of
+                [] -> Argv;
+                _ -> Argv ++ Args
+            end,
+
+    DisplayName = jup_util:call_if_exported(
+                    % TODO: Pass actual args
+                    BackendModule, display_name, [], BackendName
+                   ),
 
     Spec = #{
-      argv => Argv,
+      argv => Argv1,
       % TODO Generate display_name from the module by passing the args, also
       % append the node name in case this is a remote connection
-      display_name => jup_util:call_if_exported(
-                        Backend, display_name, [], Backend
-                       ),
-      language => jup_util:call_if_exported(Backend, language, [], erlang),
+      display_name => DisplayName,
+      language => jup_util:call_if_exported(BackendModule, language, [],
+                                            erlang),
       env => Env
     },
 
@@ -141,3 +155,19 @@ path_to_binary(Fn) when is_binary(Fn) ->
     filename:flatten(Fn);
 path_to_binary(Fn) ->
     list_to_binary(filename:flatten(Fn)).
+
+
+-spec process_args(map()) -> [binary()].
+process_args(Args) ->
+    maps:fold(
+      fun (Key, Value, Res) ->
+              % TODO: Ensure that this command-line parses correctly
+              Param = jup_util:ensure_binary(
+                        io_lib:format("--~s", [jup_util:ensure_binary(Key)])
+                       ),
+
+              [Param, jup_util:ensure_binary(Value)] ++ Res
+      end,
+      [],
+      Args
+     ).

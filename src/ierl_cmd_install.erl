@@ -1,7 +1,7 @@
 -module(ierl_cmd_install).
 
 -export([
-         exec/3,
+         exec/4,
          opt_spec/0
         ]).
 
@@ -23,13 +23,29 @@ opt_spec() ->
     }.
 
 
-exec({BName, Backend}, ParsedArgs, _Rest) ->
+exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
     application:ensure_all_started(jsx),
 
     % TODO: Default to BName_Node
-    Copy = proplists:get_value(copy, ParsedArgs, false),
+    Copy = maps:get(copy, ParsedArgs, false),
 
-    Args = #{ copy => Copy, args => [] },
+    BackendArgs1 = lists:foldl(
+                     fun (OptSpec, Res) ->
+                             Key = element(1, OptSpec),
+                             Name = element(3, OptSpec),
+
+                             case maps:get(Key, BackendArgs, undefined) of
+                                 undefined ->
+                                     Res;
+                                 Value ->
+                                     Res#{ Name => Value }
+                             end
+                     end,
+                     #{},
+                     BackendSpec
+                    ),
+
+    Args = #{ copy => Copy, args => BackendArgs1 },
 
     Args1 = lists:foldl(
               fun (PName, A) ->
@@ -39,7 +55,7 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
               [node, sname]
              ),
 
-    Args2 = case proplists:get_value(cookie, ParsedArgs, undefined) of
+    Args2 = case maps:get(cookie, ParsedArgs, undefined) of
                 undefined ->
                     Args1;
                 Val ->
@@ -50,25 +66,22 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
                      }
             end,
 
-    % TODO Parse rest and add to spec
-    Name = proplists:get_value(name, ParsedArgs, BName),
+    Name = maps:get(name, ParsedArgs, BName),
 
     io:format("Building kernel spec...~n"),
-    Spec = ierl_kernelspec:build(BName, Args2),
+    Spec = ierl_kernelspec:build(BName, Backend, Args2),
     io:format("Built kernel spec, storing~n"),
     ierl_kernelspec:write(Name, Spec),
     io:format("Installed kernel ~s with backend ~s~n", [Name, Backend]).
 
 
 forward_arg(Name, ParsedArgs, Args) ->
-    case proplists:get_value(Name, ParsedArgs, undefined) of
+    case maps:get(Name, ParsedArgs, undefined) of
         undefined ->
             Args;
         Val ->
-            Param = jup_util:ensure_binary(io_lib:format("--~p", [Name])),
-            Val1 = jup_util:ensure_binary(Val),
             Args#{
-              args => maps:get(args, Args, []) ++ [Param, Val1],
-              Name => Val1
+              args => maps:put(Name, Val, maps:get(args, Args, #{})),
+              Name => Val
              }
     end.

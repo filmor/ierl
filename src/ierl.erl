@@ -120,23 +120,47 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
     application:set_env(lager, suppress_application_start_stop, true),
     application:set_env(lager, suppress_supervisor_start_stop, true),
 
-    {ok, _} = application:ensure_all_started(lager),
-    lager:set_loglevel(lager_console_backend, error),
+    {module, Command} = code:ensure_loaded(Command),
+    {module, Backend} = code:ensure_loaded(Backend),
 
     {_, Spec} = get_opts(Command),
-    {_, _BSpec} = get_opts(Backend),
+    {_, BSpec} = get_opts(Backend),
+
+    % TODO: Ensure that BSpec doesn't override any options from Spec
 
     Spec1 = [{help, $h, "help", boolean, "This help text"}|Spec],
 
-    {ok, {ParsedArgs, LeftOver}} = getopt:parse(Spec1, Rest),
+    Spec2 = Spec1 ++ BSpec,
+
+    {ok, {ParsedArgs, _LeftOver}} = getopt:parse(Spec2, Rest),
+
+    Args = args_to_map(ParsedArgs, Spec),
+    BackendArgs = args_to_map(ParsedArgs, BSpec),
 
     case proplists:get_value(help, ParsedArgs) of
         true ->
             getopt:usage(
-              Spec1, lists:flatten(io_lib:format("ierl ~s ~s",
-                                                 [BAtom, CmdAtom])
-                                  )
+              Spec2,
+              lists:flatten(io_lib:format("ierl ~s ~s", [BAtom, CmdAtom]))
              );
         _ ->
-            Command:exec({BAtom, Backend}, ParsedArgs, LeftOver)
+            Command:exec({BAtom, Backend}, Args, BackendArgs, BSpec)
     end.
+
+
+-spec args_to_map([{atom(), any()}], [getopt:option_spec()]) -> map().
+args_to_map(ParsedArgs, Spec) ->
+    lists:foldl(
+      fun (Option, Res) ->
+              Name = element(1, Option),
+
+              case proplists:get_value(Name, ParsedArgs) of
+                  undefined ->
+                      Res;
+                  Value ->
+                      Res#{ Name => Value }
+              end
+      end,
+      #{},
+      Spec
+     ).

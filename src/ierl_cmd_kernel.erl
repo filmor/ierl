@@ -1,7 +1,7 @@
 -module(ierl_cmd_kernel).
 
 -export([
-         exec/3,
+         exec/4,
          opt_spec/0
         ]).
 
@@ -20,16 +20,19 @@ opt_spec() ->
     }.
 
 
-exec({BName, Backend}, ParsedArgs, _Rest) ->
+exec({BName, Backend}, ParsedArgs, BackendArgs, _BackendSpec) ->
+    {ok, _} = application:ensure_all_started(lager),
+    lager:set_loglevel(lager_console_backend, error),
+
     {ok, _Deps} = application:ensure_all_started(ierl),
 
-    JsonFile = proplists:get_value(conn_file, ParsedArgs),
+    JsonFile = maps:get(conn_file, ParsedArgs, undefined),
     case JsonFile of
         undefined -> error(must_specify_conn_file);
         _ -> ok
     end,
 
-    SName = proplists:get_value(sname, ParsedArgs, atom_to_list(BName)),
+    SName = maps:get(sname, ParsedArgs, atom_to_list(BName)),
 
     Suffix = binary:replace(
                base64:encode(crypto:strong_rand_bytes(6)),
@@ -49,7 +52,7 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
             erlang:set_cookie(node(), list_to_atom(Value))
     end,
 
-    Node = case proplists:get_value(node, ParsedArgs, undefined) of
+    Node = case maps:get(node, ParsedArgs, undefined) of
                undefined ->
                    node();
                Val ->
@@ -61,7 +64,8 @@ exec({BName, Backend}, ParsedArgs, _Rest) ->
 
     process_flag(trap_exit, true),
     % TODO Parse rest of the args
-    Args = #{ node => Node },
+
+    Args = #{ node => Node, backend_args => BackendArgs },
     {ok, _Pid} = jupyter:start_kernel(ierlang, JsonFile, Backend, Args),
 
     receive
