@@ -3,6 +3,7 @@
 -export([
          split_at_delim/2,
          ensure_binary/1,
+         ensure_string/1,
          hexlify/1,
 
          get_uuid/0,
@@ -14,7 +15,12 @@
         ]).
 
 
--spec ensure_binary(string() | atom() | binary()) -> binary().
+-export_type([string_like/0]).
+
+-type string_like() :: string() | atom() | binary() | iolist().
+
+
+-spec ensure_binary(string_like()) -> binary().
 ensure_binary(List) when is_list(List) ->
     list_to_binary(List);
 
@@ -23,6 +29,17 @@ ensure_binary(Atom) when is_atom(Atom) ->
 
 ensure_binary(Binary) when is_binary(Binary) ->
     Binary.
+
+
+-spec ensure_string(string_like()) -> string().
+ensure_string(List) when is_list(List) ->
+    lists:flatten(List);
+
+ensure_string(Atom) when is_atom(Atom) ->
+    atom_to_list(Atom);
+
+ensure_string(Binary) when is_binary(Binary) ->
+    binary_to_list(Binary).
 
 
 % Helper function: Split a list at a given delimiter, fail if the delimiter
