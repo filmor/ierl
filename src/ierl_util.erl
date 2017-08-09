@@ -1,7 +1,8 @@
 -module(ierl_util).
 
--export([get_app_version/1, simplify/1]).
+-export([get_app_version/1, simplify/1, format_args/1]).
 
+-spec get_app_version(atom()) -> string().
 get_app_version(Name) ->
     case lists:keyfind(Name, 1, application:loaded_applications()) of
         {_, _, Version} ->
@@ -34,3 +35,23 @@ do_simplify([H | T], Res) ->
 
 do_simplify([], Res) ->
     lists:reverse(Res).
+
+
+-spec format_args(map()) -> [binary()].
+format_args(Map) ->
+    % TODO: Maybe implement some kind of escaping here.
+    lists:reverse(
+      maps:fold(
+        fun (Key, Value, Res) when Value =:= false; Value =:= undefined ->
+                Res;
+            (Key, true, Res) ->
+                [jup_util:ensure_binary(io_lib:format("--~s", [Key])) | Res];
+            (Key, Value, Res) ->
+                [jup_util:ensure_binary(io_lib:format("--~s=~s", [Key, Value]))
+                 | Res]
+        end,
+        [],
+        Map
+       )
+     ).
+

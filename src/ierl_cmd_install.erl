@@ -45,7 +45,28 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
                      BackendSpec
                     ),
 
-    Args = #{ copy => Copy, args => BackendArgs1 },
+    % TODO: Nicer generated name instead of BName
+    Name = maps:get(name, ParsedArgs, BName),
+
+    DisplayName = jup_util:call_if_exported(
+                    Backend, display_name, [BackendArgs1], undefined
+                   ),
+
+    DisplayName1 =
+    case DisplayName of
+        undefined ->
+            Name;
+        _ ->
+            io:format("~s (~s)", [DisplayName, Name])
+    end,
+
+    Args = #{
+      display_name => DisplayName1,
+      backend => Backend,
+      backend_name => BName,
+      copy => Copy,
+      args => BackendArgs1
+     },
 
     Args1 = lists:foldl(
               fun (PName, A) ->
@@ -66,13 +87,39 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
                      }
             end,
 
-    Name = maps:get(name, ParsedArgs, BName),
+    {Path, Install, Delete} =
+    case true of
+        true ->
+            {mochitemp:mkdtemp(), true, true};
+        _ ->
+            {<<"">>, false, false}
+    end,
 
-    io:format("Building kernel spec...~n"),
-    Spec = ierl_kernelspec:build(BName, Backend, Args2),
-    io:format("Built kernel spec, storing~n"),
-    ierl_kernelspec:write(Name, Spec),
-    io:format("Installed kernel ~s with backend ~s~n", [Name, Backend]).
+    FullPath = filename:join(Path, Name),
+
+    io:format("Writing kernel spec to ~s...~n", [FullPath]),
+    ierl_kernelspec:create(Args2#{ path => FullPath }),
+
+    case Install of
+        true ->
+            io:format("Installing kernelspec ~s...~n", [Name]),
+            case ierl_exec:exec(jupyter, [kernelspec, install, FullPath]) of
+                {ok, _} ->
+                    io:format("Successfully installed kernelspec~n");
+                {error, _, Data} ->
+                    io:format("Failed installing:~n~n~s~n", [Data])
+            end;
+        _ ->
+            ok
+    end,
+
+    case Delete of
+        true ->
+            io:format("Cleaning up temporary path...~n"),
+            mochitemp:rmtempdir(Path);
+        _ ->
+            ok
+    end.
 
 
 forward_arg(Name, ParsedArgs, Args) ->
