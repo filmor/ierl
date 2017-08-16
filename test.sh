@@ -4,7 +4,7 @@ escript rebar3 compile
 
 for lang in erlang lfe elixir
 do
-    escript _build/default/bin/ierl install $lang --name ${lang}_test
+    escript _build/default/bin/ierl install $lang --user --replace --name ${lang}_test
 done
 
 pytest
