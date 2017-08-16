@@ -12,7 +12,8 @@ create(Options) ->
       backend := BackendModule,
       backend_name := BackendName,
       args := BackendArgs,
-      path := Root
+      path := Root,
+      copy := Copy
     } = Options,
 
     ok = filelib:ensure_dir(filename:join([Root, "something"])),
@@ -24,6 +25,15 @@ create(Options) ->
 
     ScriptPath = filename:absname(escript:script_name()),
 
+    ScriptPath1 =
+    case Copy of
+        true ->
+            file:copy(ScriptPath, filename:join([Root, "ierl.escript"])),
+            <<"{resource_dir}/ierl.escript">>;
+        _ ->
+            ScriptPath
+    end,
+
     Argv = [
             path_to_binary(get_erl_bin()),
             <<"+B">>, <<"-boot">>, <<"start_clean">>,
@@ -32,7 +42,7 @@ create(Options) ->
             <<"-pz">>, <<"ierl/ierl/ebin">>,
             <<"-run">>, <<"escript">>, <<"start">>,
             <<"-extra">>,
-            path_to_binary(ScriptPath),
+            path_to_binary(ScriptPath1),
             <<"kernel">>,
             BackendName,
             <<"-f">>, <<"{connection_file}">>

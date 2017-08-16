@@ -14,11 +14,18 @@ opt_spec() ->
                                  "(defaults to the backend name)"
       },
       {copy, $c, "copy", boolean, "Copy the escript to make a standalone "
-      "kernel"},
+       "kernel"},
       {node, undefined, "node", string, "Remote node to run against"},
       {sname, undefined, "sname", string, "Short name for this node "
        "(defaults to the backend name"},
-      {cookie, undefined, "cookie", string, "Cookie"}
+      {cookie, undefined, "cookie", string, "Cookie"},
+      {replace, undefined, "replace", boolean, "Replace an existing kernel "
+       "spec with this name"},
+      {user, undefined, "user", boolean, "Install to the per-user kernel "
+       "registry"},
+      {prefix, undefined, "prefix", string, "Specify a prefix to install to, "
+       "e.g. an env. The kernelspec will be installed in "
+       "PREFIX/share/jupyter/kernels/"}
      ]
     }.
 
@@ -103,7 +110,31 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
     case Install of
         true ->
             io:format("Installing kernelspec ~s...~n", [Name]),
-            case ierl_exec:exec(jupyter, [kernelspec, install, FullPath]) of
+
+            JKArgs = [kernelspec, install, FullPath]
+            ++
+            case maps:get(replace, ParsedArgs, undefined) of
+                true ->
+                    ["--replace"];
+                _ ->
+                    []
+            end
+            ++
+            case maps:get(user, ParsedArgs, undefined) of
+                true ->
+                    ["--user"];
+                _ ->
+                    []
+            end
+            ++
+            case maps:get(prefix, ParsedArgs, undefined) of
+                Prefix when is_list(Prefix) ->
+                    ["--prefix", Prefix];
+                _ ->
+                    []
+            end,
+
+            case ierl_exec:exec(jupyter, JKArgs) of
                 {ok, _} ->
                     io:format("Successfully installed kernelspec~n");
                 {error, _, Data} ->

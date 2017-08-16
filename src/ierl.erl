@@ -141,7 +141,7 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
         true ->
             getopt:usage(
               Spec2,
-              lists:flatten(io_lib:format("ierl ~s ~s", [BAtom, CmdAtom]))
+              lists:flatten(io_lib:format("ierl ~s ~s", [CmdAtom, BAtom]))
              );
         _ ->
             Command:exec({BAtom, Backend}, Args, BackendArgs, BSpec)
