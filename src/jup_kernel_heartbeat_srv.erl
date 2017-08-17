@@ -28,7 +28,7 @@
          }).
 
 
--spec start_link(jupyter:name(), #jup_conn_data{}) -> {ok, pid()}.
+-spec start_link(jupyter:name(), jup_connection_file:data()) -> {ok, pid()}.
 start_link(Name, ConnData) ->
     gen_server:start_link(?JUP_VIA(Name, heartbeat), ?MODULE,
                           {Name, ConnData}, []

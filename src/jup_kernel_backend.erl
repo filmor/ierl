@@ -32,31 +32,35 @@
 -type callback_res(Res) :: {Res, State :: term()}
                          | {Res, Extra :: map(), State :: term()}.
 
+
+-type kernel_info_res() :: map().
+-callback do_kernel_info(Msg :: jup_msg:type(), State :: term())
+    -> callback_res(kernel_info_res()).
+
+
 -type exec_err() :: {error, Type :: atom(), Reason :: atom(),
                      StackTrace :: [binary()] | binary()}.
+-type execute_res() :: {ok, jup_display:type()} | exec_err().
+-callback do_execute(Code::binary(), Msg::jup_msg:type(), State::term())
+    -> callback_res(execute_res()).
 
 
--callback do_kernel_info(Msg :: #jup_msg{}, State :: term())
-    -> callback_res(map()).
-
--callback do_execute(Code::binary(), Msg::#jup_msg{}, State::term())
-    -> callback_res({ok, jup_display:type()} | exec_err()).
-
-
--callback do_complete(Code::binary(), CursorPos::integer(), Msg::#jup_msg{},
+-type complete_res() :: [binary()].
+-callback do_complete(Code::binary(), CursorPos::integer(), Msg::jup_msg:type(),
                       State::term())
-    -> callback_res([binary()]).
+    -> callback_res(complete_res()).
 
 
--callback do_is_complete(Code::binary(), Msg::#jup_msg{}, State::term())
-    -> callback_res(
-         complete | invalid | {incomplete, binary()} | incomplete | unknown
-        ).
+-type is_complete_res() :: complete | invalid | {incomplete, binary()} |
+                           incomplete | unknown.
+-callback do_is_complete(Code::binary(), Msg::jup_msg:type(), State::term())
+    -> callback_res(is_complete_res()).
 
 
+-type inspect_res() :: {ok, jup_display:type()} | not_found.
 -callback do_inspect(Code::binary(), CursorPos::integer(),
-                     DetailLevel::integer(), Msg::#jup_msg{}, State::term())
-    -> callback_res({ok, jup_display:type()} | not_found).
+                     DetailLevel::integer(), Msg::jup_msg:type(), State::term())
+    -> callback_res(inspect_res()).
 
 
 -callback opt_spec() -> {Desc :: iodata(), [getopt:option_spec()]}.
@@ -110,20 +114,33 @@ start_link(Name, Node, Backend, BackendArgs) ->
      ).
 
 
+-type call_res(T) :: T | not_implemented.
+
 -spec exec_counter(jupyter:name()) -> integer().
 exec_counter(Name) ->
     do_call(Name, exec_counter).
 
--spec execute(jupyter:name(), binary(), boolean(), boolean(), #jup_msg{}) -> ok.
+-spec execute(jupyter:name(), binary(), boolean(), boolean(), jup_msg:type()) ->
+    {execute_res(), ExecCounter :: integer(), Metadata :: map()}.
 execute(Name, Code, Silent, StoreHistory, Msg) ->
     do_call(Name, {execute, Code, Silent, StoreHistory, Msg}).
 
+-spec kernel_info(jupyter:name(), jup_msg:type()) -> kernel_info_res().
 kernel_info(Name, Msg) ->
     do_call(Name, do_kernel_info, [], Msg).
+
+-spec is_complete(jupyter:name(), binary(), jup_msg:type()) ->
+    call_res(is_complete_res()).
 is_complete(Name, Code, Msg) ->
     do_call(Name, do_is_complete, [Code], Msg).
+
+-spec complete(jupyter:name(), binary(), integer(), jup_msg:type()) ->
+    call_res(complete_res()).
 complete(Name, Code, CursorPos, Msg) ->
     do_call(Name, do_complete, [Code, CursorPos], Msg).
+
+-spec inspect(jupyter:name(), binary(), integer(), integer(), jup_msg:type())
+    -> call_res(inspect_res()).
 inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
     do_call(Name, do_inspect, [Code, CursorPos, DetailLevel], Msg).
 
@@ -213,12 +230,9 @@ handle_cast(_Msg, _State) ->
     error({invalid_cast, _Msg}).
 
 
-handle_call({kernel_info, _Msg}, _From, State) ->
-    % TODO: Pass on to backend
-    {reply, {<<"IErlang">>, <<"0.2">>, <<"Erlang kernel">>}, State};
-
 handle_call(exec_counter, _From, State) ->
     {reply, State#state.exec_counter, State};
+
 
 handle_call(Action, From, State)
   when State#state.got_initial_state =:= false ->

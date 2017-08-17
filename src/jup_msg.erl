@@ -12,12 +12,13 @@
 -define(DELIM, <<"<IDS|MSG>">>).
 -define(VERSION, <<"5.1">>).
 
+-type type() :: #jup_msg{}.
 -type key() :: {crypto:hash_algorithms(), binary()}.
 
 -export_type([key/0]).
 
 
--spec decode([binary()], key()) -> #jup_msg{}.
+-spec decode([binary()], key()) -> type().
 decode(MultipartMsg, {SignatureScheme, Key}) ->
     {Uuids, Suffix} = jup_util:split_at_delim(MultipartMsg, ?DELIM),
 
@@ -47,7 +48,7 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
       }.
 
 
--spec encode(#jup_msg{}, key()) -> [binary()].
+-spec encode(type(), key()) -> [binary()].
 encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
     Ctx0 = crypto:hmac_init(SignatureScheme, Key),
     Header = jsx:encode(Msg#jup_msg.header),
@@ -73,21 +74,22 @@ encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
     ].
 
 
+-spec header_entry(type(), atom()) -> binary().
 header_entry(#jup_msg{header=Header}, Key) ->
     BinKey = jup_util:ensure_binary(Key),
     maps:get(BinKey, Header).
 
 
--spec msg_type(#jup_msg{}) -> binary().
+-spec msg_type(type()) -> binary().
 msg_type(#jup_msg{} = Msg) ->
     header_entry(Msg, msg_type).
 
--spec msg_id(#jup_msg{}) -> binary().
+-spec msg_id(type()) -> binary().
 msg_id(#jup_msg{} = Msg) ->
     header_entry(Msg, msg_id).
 
 
--spec add_headers(#jup_msg{}, #jup_msg{}, atom() | binary()) -> #jup_msg{}.
+-spec add_headers(type(), type(), atom() | binary()) -> type().
 add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
     Header = #{
       <<"date">> => iso8601:format(os:timestamp()),

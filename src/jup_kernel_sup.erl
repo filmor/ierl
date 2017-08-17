@@ -12,7 +12,7 @@
 
 
 -spec start_link(Name :: term(),
-                 FileNameOrData :: #jup_conn_data{} | binary(),
+                 FileNameOrData :: jup_connection_file:data() | binary(),
                  Backend :: atom(),
                  Args :: map())
     -> {ok, pid()}.

@@ -6,8 +6,12 @@
     parse/1
 ]).
 
+-type data() :: #jup_conn_data{}.
 
--spec parse(binary()) -> #jup_conn_data{}.
+-export_type([data/0]).
+
+
+-spec parse(binary()) -> data().
 parse(Fn) ->
     {ok, Raw} = file:read_file(Fn),
     JsonData = jsx:decode(Raw, [return_maps]),

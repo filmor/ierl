@@ -25,7 +25,9 @@
          }).
 
 
--spec start_link(jupyter:name(), module(), list()) -> pid().
+-dialyzer({nowarn_function, register_msg_to_io/1}).
+
+-spec start_link(jupyter:name(), module(), list()) -> {ok, pid()}.
 start_link(Name, Backend, BackendArgs) ->
     IOPid = jup_kernel_io:get_pid(Name),
     Args = [self(), IOPid, Backend, BackendArgs],
@@ -62,7 +64,7 @@ init([Pid, IOPid, Backend, BackendArgs]) ->
 handle_info({call, Ref, Func, Args, Msg}, State) ->
     S1 =
     try
-        io:setopts([{jup_msg, Msg}]),
+        register_msg_to_io(Msg),
         Args1 = Args ++ [Msg, State#state.backend_state],
 
         {Res, NewState} =
@@ -102,3 +104,9 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     State.
+
+
+-spec register_msg_to_io(jup_msg:type()) -> ok.
+register_msg_to_io(Msg) ->
+    % In separate function as io:setopts spec does not allow arbitrary options
+    io:setopts([{jup_msg, Msg}]).

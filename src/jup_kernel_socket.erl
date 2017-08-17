@@ -28,7 +28,8 @@
          }).
 
 
--spec start_link(jupyter:name(), atom(), atom(), integer(), #jup_conn_data{}) ->
+-spec start_link(jupyter:name(), atom(), atom(), integer(),
+                 jup_connection_file:data()) ->
     {ok, pid()}.
 
 start_link(Name, PortName, Kind, Port, ConnData) ->
@@ -38,7 +39,7 @@ start_link(Name, PortName, Kind, Port, ConnData) ->
                          ).
 
 
--spec send(jupyter:name(), atom(), #jup_msg{}) -> ok.
+-spec send(jupyter:name(), atom(), jup_msg:type()) -> ok.
 send(Name, PortName, Msg = #jup_msg{}) ->
     gen_server:call(?JUP_VIA(Name, PortName), {send, Msg}).
 

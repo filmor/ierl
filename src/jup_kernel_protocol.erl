@@ -10,6 +10,7 @@
 
 % TODO: do_status(Name, starting) at startup
 
+-spec process_message(jupyter:name(), atom(), binary(), jup_msg:type()) -> ok.
 process_message(Name, Port, MsgType, Msg) ->
     do_status(Name, busy, Msg),
     % TODO: Catch and send error?
@@ -32,25 +33,31 @@ process_message(Name, Port, MsgType, Msg) ->
     case PRes of
         {Status, Result} ->
             do_reply(Name, Port, Status, Result, Msg);
-        Status when is_atom(Status) ->
-            do_reply(Name, Port, Status, #{}, Msg);
         noreply ->
             ok;
         not_implemented ->
             ok;
+        Status when is_atom(Status) ->
+            do_reply(Name, Port, Status, #{}, Msg);
         Other ->
             lager:error("Invalid process result: ~p", [Other])
     end,
     do_status(Name, idle, Msg).
 
 
+-spec do_reply(jupyter:name(), term(), atom(), jup_msg:type() | map(),
+               jup_msg:type())
+    -> ok.
+
 do_reply(Name, Port, Status, NewMsg, Msg) ->
     lager:debug("Replying to ~p with status ~p and content ~p",
                 [Port, Status, NewMsg]),
 
     NewMsg1 = case NewMsg of
-                  #jup_msg{} -> NewMsg;
-                  _ -> #jup_msg{content=NewMsg}
+                  Map when is_map(Map) ->
+                      #jup_msg{content=Map};
+                  _ ->
+                      NewMsg
               end,
 
     NewMsg2 = #jup_msg{content=(NewMsg1#jup_msg.content)#{ status => Status }},
@@ -214,9 +221,7 @@ do_process(Name, _Source, <<"complete_request">>, Msg) ->
               }
             };
         not_implemented ->
-            not_implemented;
-        _ ->
-            unknown
+            not_implemented
     end;
 
 
@@ -229,7 +234,7 @@ do_process(Name, _Source, <<"inspect_request">>, Msg) ->
        <<"detail_level">> := DetailLevel
     } = Content,
 
-    jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel);
+    jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel, Msg);
 
 
 do_process(Name, Source, MsgType, Msg) ->
