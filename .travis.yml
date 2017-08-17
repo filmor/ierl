@@ -1,8 +1,12 @@
 language: elixir
-matrix:
-  include:
-    - elixir: 1.4.5
-      otp_release: 19.3
+
+elixir:
+  - 1.4.5
+  - 1.5.1
+
+otp_release:
+  - 19.3
+  - 20.0
 
 dist: trusty
 sudo: required
@@ -24,5 +28,5 @@ install:
 
 script:
   # - ./rebar3 xref
-  # - ./rebar3 dialyzer
+  - ./rebar3 dialyzer
   - ./test.sh
