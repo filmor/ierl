@@ -42,7 +42,7 @@ format_args(Map) ->
     % TODO: Maybe implement some kind of escaping here.
     lists:reverse(
       maps:fold(
-        fun (Key, Value, Res) when Value =:= false; Value =:= undefined ->
+        fun (_Key, Value, Res) when Value =:= false; Value =:= undefined ->
                 Res;
             (Key, true, Res) ->
                 [jup_util:ensure_binary(io_lib:format("--~s", [Key])) | Res];

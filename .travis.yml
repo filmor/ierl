@@ -28,5 +28,5 @@ install:
 
 script:
   # - ./rebar3 xref
-  - ./rebar3 dialyzer
+  # - ./rebar3 dialyzer
   - ./test.sh
