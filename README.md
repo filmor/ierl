@@ -5,6 +5,8 @@
 `ierl` is a command line tool based on
 [erlang-jupyter](https://github.com/filmor/erlang-jupyter) to allow running and
 installing Jupyter kernels on the Erlang Virtual Machine written in pure Erlang.
+A precompiled version can be downloaded from [the release page](https://github.com/filmor/ierl/releases/latest),
+download the `ierl` escript.
 
 Currently, three kernels have been implemented to the point that they support
 running code, compiling modules, and code completion:

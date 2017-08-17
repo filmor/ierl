@@ -55,18 +55,36 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
                     ),
 
     % TODO: Nicer generated name instead of BName
-    Name = maps:get(name, ParsedArgs, BName),
+    Name = case maps:get(name, ParsedArgs, undefined) of
+               undefined ->
+                   case maps:get(node, ParsedArgs, undefined) of
+                       undefined ->
+                           BName;
+                       NodeName ->
+                           NodeName1 = string:to_lower(NodeName),
+                           NodeName2 =  re:replace(NodeName1, "[^a-z_0-9]",
+                                                   "_"),
+                           io_lib:format("~s_~s", [BName, NodeName2])
+                   end;
+               NameInner ->
+                   NameInner
+           end,
 
-    DisplayName = jup_util:call_if_exported(
-                    Backend, display_name, [BackendArgs1], undefined
-                   ),
+    DisplayName =
+    case jup_util:call_if_exported(Backend, display_name, [BackendArgs1],
+                                   undefined) of
+        undefined ->
+            atom_to_list(BName);
+        DisplayNameInner ->
+            DisplayNameInner
+    end,
 
     DisplayName1 =
     case DisplayName of
         undefined ->
             Name;
         _ ->
-            io:format("~s (~s)", [DisplayName, Name])
+            io_lib:format("~s (~s)", [DisplayName, Name])
     end,
 
     Args = #{
