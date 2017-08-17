@@ -13,8 +13,17 @@ running code, compiling modules, and code completion:
 
 ### Erlang
 
-Not a full replacement for the built-in shell, yet, as records are not supported
-and pseudo-functions like `f` or `l` are not implemented.
+Currently, only the `f` shell function to forget a variable is implemented.
+However, in contrast to the usual `erl` shell, this backend also supports
+defining modules inline, i.e. one can have a cell
+
+    -module(my_mod).
+
+    -export([func/1]).
+
+    func(X) -> X.
+
+and it will be compiled and usable after executing.
 
 ### Elixir
 
