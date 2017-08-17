@@ -19,6 +19,8 @@ opt_spec() ->
       {sname, undefined, "sname", string, "Short name for this node "
        "(defaults to the backend name"},
       {cookie, undefined, "cookie", string, "Cookie"},
+      {directory, undefined, "output", string, "Instead of using "
+       "jupyter kernelspec to install, just write to the given directory"},
       {replace, undefined, "replace", boolean, "Replace an existing kernel "
        "spec with this name"},
       {user, undefined, "user", boolean, "Install to the per-user kernel "
@@ -95,11 +97,11 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, BackendSpec) ->
             end,
 
     {Path, Install, Delete} =
-    case true of
-        true ->
+    case maps:get(directory, ParsedArgs, undefined) of
+        undefined ->
             {mochitemp:mkdtemp(), true, true};
-        _ ->
-            {<<"">>, false, false}
+        Dir ->
+            {jup_util:ensure_binary(Dir), false, false}
     end,
 
     FullPath = filename:join(Path, Name),

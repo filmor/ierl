@@ -31,7 +31,8 @@ opt_spec() ->
 init(_Args) ->
     #state{
        bindings=erl_eval:new_bindings(),
-       records=#{}
+       records=#{},
+       modules=#{}
       }.
 
 

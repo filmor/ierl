@@ -4,7 +4,7 @@
 
 
 -spec exec( Cmd :: jup_util:string_like(), Args :: [jup_util:string_like()]) ->
-    {ok, iolist()}.
+    {ok, iolist()} | {error, integer(), iolist()}.
 exec(Cmd, Args) ->
     Ref = make_ref(),
 
