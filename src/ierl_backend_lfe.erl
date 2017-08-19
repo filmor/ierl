@@ -51,7 +51,7 @@ do_kernel_info(_Msg, State) ->
         version => ierl_versions:get_app_version(lfe),
         file_extension => <<".lfe">>,
         codemirror_mode => <<"commonlisp">>,
-        pygments_lexer => <<"commonlisp">>
+        pygments_lexer => <<"common-lisp">>
        }
      },
 
