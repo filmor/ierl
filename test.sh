@@ -7,7 +7,7 @@ do
     escript _build/default/bin/ierl install $lang --user --replace --name ${lang}_test
 done
 
-pytest
+pytest python-tests
 
 for lang in erlang lfe elixir
 do
