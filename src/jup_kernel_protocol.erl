@@ -12,6 +12,8 @@
 
 -spec process_message(jupyter:name(), atom(), binary(), jup_msg:type()) -> ok.
 process_message(Name, Port, MsgType, Msg) ->
+    % TODO: Do this processing asynchronously, put messages on queues (normal
+    % exec-queue and fast-lane) and let the worker handle the rest
     do_status(Name, busy, Msg),
     % TODO: Catch and send error?
 
@@ -235,6 +237,10 @@ do_process(Name, _Source, <<"inspect_request">>, Msg) ->
     } = Content,
 
     jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel, Msg);
+
+
+do_process(Name, _Source, <<"interrupt_request">>, Msg) ->
+    jup_kernel_backend:interrupt(Name, Msg);
 
 
 do_process(Name, Source, MsgType, Msg) ->

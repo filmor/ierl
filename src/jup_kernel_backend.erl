@@ -12,7 +12,8 @@
         kernel_info/2,
         is_complete/3,
         complete/4,
-        inspect/5
+        inspect/5,
+        interrupt/2
        ]).
 
 
@@ -63,6 +64,10 @@
     -> callback_res(inspect_res()).
 
 
+-callback do_interrupt(Msg :: jup_msg:type(), State :: term())
+    -> callback_res(ok).
+
+
 -callback opt_spec() -> {Desc :: iodata(), [getopt:option_spec()]}.
 
 
@@ -70,6 +75,7 @@
                      do_complete/4,
                      do_is_complete/3,
                      do_inspect/5,
+                     do_interrupt/2,
                      opt_spec/0
                     ]).
 
@@ -87,13 +93,15 @@
 
           got_initial_state = false :: boolean(),
           exec_queue = [] :: [tuple()],
+          ctrl_exec_queue = [] :: [tuple()],
           exec_counter = 0 :: integer(),
 
           do_kernel_info :: function() | undefined,
           do_execute :: function() | undefined,
           do_complete :: function() | undefined,
           do_is_complete :: function() | undefined,
-          do_inspect :: function() | undefined
+          do_inspect :: function() | undefined,
+          do_interrupt :: function() | undefined
          }).
 
 
@@ -144,6 +152,9 @@ complete(Name, Code, CursorPos, Msg) ->
 inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
     do_call(Name, do_inspect, [Code, CursorPos, DetailLevel], Msg).
 
+-spec interrupt(jupyter:name(), jup_msg:type()) -> call_res(ok).
+interrupt(Name, Code, CursorPos, DetailLevel, Msg) ->
+    do_call(Name, do_interrupt, [], Msg).
 
 init([Name, Node, Backend, BackendArgs]) ->
     {ok, WorkerPid} =
@@ -200,7 +211,8 @@ init([Name, Node, Backend, BackendArgs]) ->
             do_complete=Get(do_complete, 4),
             do_inspect=Get(do_inspect, 5),
             do_is_complete=Get(do_is_complete, 3),
-            do_kernel_info=Get(do_kernel_info, 2)
+            do_kernel_info=Get(do_kernel_info, 2),
+            do_interrupt=Get(do_interrupt, 2)
            }
     }.
 
@@ -251,6 +263,12 @@ handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->
                   end,
 
     Res = (State#state.do_execute)([Code], Msg),
+
+    % TODO:
+    % - Enqueue commands separately in control and "normal" channel
+    % - Always give the control queue precedence
+    % - Implement interruption (dropping at least the normal queue)
+    % -
 
     State1 =
     case Res of
