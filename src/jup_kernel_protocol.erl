@@ -1,5 +1,8 @@
 -module(jup_kernel_protocol).
 
+%% @doc
+%% Main jupyter procotol implementation
+
 -include("internal.hrl").
 
 -export([
@@ -12,16 +15,15 @@
 
 -spec process_message(jupyter:name(), atom(), binary(), jup_msg:type()) -> ok.
 process_message(Name, Port, MsgType, Msg) ->
-    % TODO: Do this processing asynchronously, put messages on queues (normal
-    % exec-queue and fast-lane) and let the worker handle the rest
-    do_status(Name, busy, Msg),
-    % TODO: Catch and send error?
-
-    PRes = try
-               do_process(Name, Port, MsgType, Msg)
-           catch
-               Type:Reason ->
-                   lager:error("Error in process_message, stacktrace:~n~s",
+    % TODO: Use poolboy instead of straight spawns
+    spawn_link(
+      fun () ->
+              PRes = try
+                         do_process(Name, Port, MsgType, Msg)
+                     catch
+                         Type:Reason ->
+                             lager:error(
+                               "Error in process_message, stacktrace:~n~s",
                                [lager:pr_stacktrace(
                                   erlang:get_stacktrace(),
                                   {Type, Reason}
@@ -29,22 +31,23 @@ process_message(Name, Port, MsgType, Msg) ->
                                ]
                               ),
 
-                   {caught_error, Type, Reason}
-           end,
+                             {caught_error, Type, Reason}
+                     end,
 
-    case PRes of
-        {Status, Result} ->
-            do_reply(Name, Port, Status, Result, Msg);
-        noreply ->
-            ok;
-        not_implemented ->
-            ok;
-        Status when is_atom(Status) ->
-            do_reply(Name, Port, Status, #{}, Msg);
-        Other ->
-            lager:error("Invalid process result: ~p", [Other])
-    end,
-    do_status(Name, idle, Msg).
+              case PRes of
+                  {Status, Result} ->
+                      do_reply(Name, Port, Status, Result, Msg);
+                  noreply ->
+                      ok;
+                  not_implemented ->
+                      ok;
+                  Status when is_atom(Status) ->
+                      do_reply(Name, Port, Status, #{}, Msg);
+                  Other ->
+                      lager:error("Invalid process result: ~p", [Other])
+              end
+      end
+     ).
 
 
 -spec do_reply(jupyter:name(), term(), atom(), jup_msg:type() | map(),
@@ -118,6 +121,8 @@ do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
 
 
 do_process(Name, _Source, <<"execute_request">>, Msg) ->
+    do_status(Name, busy, Msg),
+
     Content = Msg#jup_msg.content,
     Code = case maps:get(<<"code">>, Content) of
                <<"">> -> empty;
@@ -160,6 +165,7 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
     {Res, ExecCounter, Metadata} =
     jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg),
 
+    Res1 =
     case Res of
         {ok, Value} ->
             do_iopub(
@@ -185,7 +191,9 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
             do_iopub(Name, error, ResMsg, Msg),
 
             {error, ResMsg#{ execution_count => ExecCounter }}
-    end;
+    end,
+
+    do_status(Name, idle, Msg).
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->

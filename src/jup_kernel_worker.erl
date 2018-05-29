@@ -19,9 +19,10 @@
 
 
 -record(state, {
-          pid,
-          backend,
-          backend_state
+          pid :: pid(),
+          backend :: module(),
+          backend_state :: any(),
+          executing_pid = undefined :: pid() | undefined
          }).
 
 
@@ -48,7 +49,6 @@ start_link(Name, Node, Backend, BackendArgs) ->
 
 
 init([Pid, IOPid, Backend, BackendArgs]) ->
-    % process_flag(trap_exit, true),
     erlang:group_leader(IOPid, self()),
     State = #state{
                pid=Pid,
@@ -83,6 +83,10 @@ handle_info({call, Ref, Func, Args, Msg}, State) ->
     end,
 
     {noreply, S1};
+
+
+handle_info({exec_result, Ref, Result, NewState}) ->
+
 
 handle_info(_Else, State) ->
     % io:write(_Else),

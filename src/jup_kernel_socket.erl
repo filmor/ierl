@@ -1,11 +1,18 @@
 -module(jup_kernel_socket).
 
+%% @doc
+%% Router socket implementation, used for control, shell, and stdin
+%%
+%% Opens a ROUTER socket at the given port and passes decoded messages on to the
+%% jup_kernel_dispatcher which uses jup_kernel_protocol for further processing.
+%% Answers are sent back from the worker process using send/3.
+
 -behaviour(gen_server).
 
 -include("internal.hrl").
 
 -export([
-        start_link/5,
+        start_link/4,
         send/3
        ]).
 
@@ -32,9 +39,9 @@
                  jup_connection_file:data()) ->
     {ok, pid()}.
 
-start_link(Name, PortName, Kind, Port, ConnData) ->
+start_link(Name, PortName, Port, ConnData) ->
     gen_server:start_link(?JUP_VIA(Name, PortName), ?MODULE,
-                          [Name, PortName, Kind, Port, ConnData],
+                          [Name, PortName, Port, ConnData],
                           []
                          ).
 
@@ -44,9 +51,9 @@ send(Name, PortName, Msg = #jup_msg{}) ->
     gen_server:call(?JUP_VIA(Name, PortName), {send, Msg}).
 
 
-init([Name, PortName, Kind, Port, ConnData]) ->
+init([Name, PortName, Port, ConnData]) ->
     Identity = string:join([atom_to_list(Name), atom_to_list(PortName)], "-"),
-    {ok, Socket} = chumak:socket(Kind, Identity),
+    {ok, Socket} = chumak:socket(router, Identity),
     {ok, _Bind} = chumak:bind(
                    Socket,
                    ConnData#jup_conn_data.transport,
@@ -111,9 +118,7 @@ do_receive_multipart({Name, PortName}, Socket, SignatureKey) ->
                 [MsgType, lager:pr(Decoded, ?MODULE)]
                ),
 
-    jup_kernel_protocol:process_message(
-      Name, PortName, MsgType, Decoded
-     ),
+    jup_kernel_protocol:process_message(Name, PortName, MsgType, Decoded),
 
     % Callback(Name, PortName, MsgType, Decoded),
     do_receive_multipart({Name, PortName}, Socket, SignatureKey).
