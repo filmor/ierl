@@ -39,8 +39,6 @@
           worker_pid :: pid(),
 
           got_initial_state = false :: boolean(),
-          exec_queue :: queue:queue(),
-          ctrl_exec_queue :: queue:queue(),
           exec_counter = 0 :: integer(),
 
           do_kernel_info :: function() | undefined,
@@ -178,23 +176,6 @@ init([Name, Node, Backend, BackendArgs]) ->
            }
     }.
 
-handle_info(init_complete, State)
-  when State#state.got_initial_state =:= false ->
-    % TODO Execute all entries from the exec_queue
-
-    State1 =
-    lists:foldr(
-      fun ({Action, From}, S) ->
-              lager:debug("Handling action ~p", [Action]),
-              {reply, Value, NewState} = handle_call(Action, From, S),
-              gen_server:reply(From, Value),
-              NewState
-      end,
-      State#state{got_initial_state=true},
-      State#state.exec_queue
-     ),
-
-    {noreply, State1};
 
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -206,14 +187,6 @@ handle_cast(_Msg, _State) ->
 
 handle_call(exec_counter, _From, State) ->
     {reply, State#state.exec_counter, State};
-
-
-handle_call(Action, From, State)
-  when State#state.got_initial_state =:= false ->
-    lager:debug("Enqueueing action ~p", [Action]),
-    {noreply,
-     State#state{exec_queue=[{Action, From} | State#state.exec_queue]}
-    };
 
 
 handle_call({execute, Code, Silent, _StoreHistory, Msg}, _From, State) ->

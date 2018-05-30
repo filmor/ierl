@@ -11,43 +11,41 @@
         ]).
 
 
+-type queue() :: control | shell.
+
 % TODO: do_status(Name, starting) at startup
 
--spec process_message(jupyter:name(), atom(), binary(), jup_msg:type()) -> ok.
+-spec process_message(jupyter:name(), queue(), binary(), jup_msg:type()) ->
+    ok.
 process_message(Name, Port, MsgType, Msg) ->
-    % TODO: Use poolboy instead of straight spawns
-    spawn_link(
-      fun () ->
-              PRes = try
-                         do_process(Name, Port, MsgType, Msg)
-                     catch
-                         Type:Reason ->
-                             lager:error(
-                               "Error in process_message, stacktrace:~n~s",
-                               [lager:pr_stacktrace(
-                                  erlang:get_stacktrace(),
-                                  {Type, Reason}
-                                 )
-                               ]
-                              ),
+    PRes = try
+               do_process(Name, Port, MsgType, Msg)
+           catch
+               Type:Reason ->
+                   lager:error(
+                     "Error in process_message, stacktrace:~n~s",
+                     [lager:pr_stacktrace(
+                        erlang:get_stacktrace(),
+                        {Type, Reason}
+                       )
+                     ]
+                    ),
 
-                             {caught_error, Type, Reason}
-                     end,
+                   {caught_error, Type, Reason}
+           end,
 
-              case PRes of
-                  {Status, Result} ->
-                      do_reply(Name, Port, Status, Result, Msg);
-                  noreply ->
-                      ok;
-                  not_implemented ->
-                      ok;
-                  Status when is_atom(Status) ->
-                      do_reply(Name, Port, Status, #{}, Msg);
-                  Other ->
-                      lager:error("Invalid process result: ~p", [Other])
-              end
-      end
-     ).
+    case PRes of
+        {Status, Result} ->
+            do_reply(Name, Port, Status, Result, Msg);
+        noreply ->
+            ok;
+        not_implemented ->
+            ok;
+        Status when is_atom(Status) ->
+            do_reply(Name, Port, Status, #{}, Msg);
+        Other ->
+            lager:error("Invalid process result: ~p", [Other])
+    end.
 
 
 -spec do_reply(jupyter:name(), term(), atom(), jup_msg:type() | map(),
@@ -92,7 +90,7 @@ to_reply_type(MsgType) ->
 
 
 do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
-    Content = jup_kernel_backend:kernel_info(Name, Msg),
+    Content = jup_kernel_executor:kernel_info(Name, Msg),
 
     DefaultLanguageInfo = #{
       name => erlang,
@@ -133,7 +131,7 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
       Name, execute_input,
       #{
           code => Code,
-          execution_count => jup_kernel_backend:exec_counter(Name)
+          execution_count => jup_kernel_executor:exec_counter(Name)
       },
       Msg
      ),
@@ -163,7 +161,7 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
     % to implement StopOnError (if error occured on ExecCounter = n => ignore
     % all execution attempts of the same execcounter
     {Res, ExecCounter, Metadata} =
-    jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg),
+    jup_kernel_executor:execute(Name, Code, Silent, StoreHistory, Msg),
 
     Res1 =
     case Res of
@@ -193,13 +191,15 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
             {error, ResMsg#{ execution_count => ExecCounter }}
     end,
 
-    do_status(Name, idle, Msg);
+    do_status(Name, idle, Msg),
+
+    Res1;
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
     Code = maps:get(<<"code">>, Content),
-    case jup_kernel_backend:is_complete(Name, Code, Msg) of
+    case jup_kernel_executor:is_complete(Name, Code, Msg) of
         incomplete ->
             {incomplete, #{ indent => <<"  ">> }};
         {incomplete, Indent} ->
@@ -222,7 +222,7 @@ do_process(Name, _Source, <<"complete_request">>, Msg) ->
     Code = maps:get(<<"code">>, Content),
     CursorPos = maps:get(<<"cursor_pos">>, Content),
 
-    case jup_kernel_backend:complete(Name, Code, CursorPos, Msg) of
+    case jup_kernel_executor:complete(Name, Code, CursorPos, Msg) of
         L when is_list(L) ->
             {ok, #{
                cursor_start => CursorPos, cursor_end => CursorPos,
@@ -244,17 +244,17 @@ do_process(Name, _Source, <<"inspect_request">>, Msg) ->
        <<"detail_level">> := DetailLevel
     } = Content,
 
-    jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel, Msg);
+    jup_kernel_executor:inspect(Name, Code, CursorPos, DetailLevel, Msg);
 
 
 do_process(Name, _Source, <<"interrupt_request">>, Msg) ->
-    jup_kernel_backend:interrupt(Name, Msg);
+    jup_kernel_executor:interrupt(Name, Msg);
 
 
 do_process(Name, Source, MsgType, Msg) ->
-    lager:debug("Not implemented on ~s: ~p:~s~n~p", [Name, Source, MsgType,
-                                                     lager:pr(Msg, ?MODULE)
-                                                    ]
-               ),
+    lager:debug(
+      "Not implemented on ~s: ~p:~s~n~p",
+      [Name, Source, MsgType, lager:pr(Msg, ?MODULE) ]
+     ),
 
     {error, #{}}.

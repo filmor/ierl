@@ -85,8 +85,23 @@ handle_cast(flush, State) ->
     {noreply, State1}.
 
 
+handle_info({'DOWN', _Ref, process, Pid, _Status}, State) ->
+    case State#state.current_pid of
+        Pid ->
+            ok;
+        Other ->
+            lager:error("Got 'DOWN' message for pid ~p, expecting "
+                        "~p", [Pid, Other])
+    end,
+    State1 = State#state{current=undefined, current_pid=undefined},
+    {noreply, do_process(State1)};
+
 handle_info(wake_up, State) ->
-    {noreply, do_process(State)}.
+    {noreply, do_process(State)};
+
+handle_info(_Msg, State) ->
+    lager:warning("Unexpected message: ~p", [_Msg]),
+    {noreply, State}.
 
 
 terminate(_Reason, _State) ->
@@ -107,7 +122,7 @@ do_process(State) when State#state.current =:= undefined ->
         {value, Queue, Value} ->
             % Do something with it
             lager:debug("Dequeued ~p from ~p", [Value, Queue]),
-            State1#state{current=Value};
+            process_message(Queue, Value, State1);
         empty ->
             lager:debug("Nothing to dequeue"),
             State1
@@ -127,5 +142,24 @@ get_first([Name | Names], Queues) ->
         {empty, _Q} ->
             get_first(Names, Queues);
         {{value, Val}, Q} ->
-            {{value, Name, Val}, Queues#{ Name => Q} }
+            {{value, Name, Val}, Queues#{ Name => Q }}
     end.
+
+
+process_message(Queue, Message, State) ->
+    {Type, Msg} = Message,
+
+    lager:debug("Processing message of type ~p", [Type]),
+
+    {Pid, _Ref} =
+    spawn_monitor(
+      fun () ->
+              jup_kernel_protocol:process_message(
+                State#state.name, Queue, Type, Msg
+               ),
+
+              lager:debug("Finished processing ~p message", [Type])
+      end
+     ),
+
+    State#state{current=Message, current_pid=Pid}.

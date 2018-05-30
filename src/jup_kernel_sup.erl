@@ -67,6 +67,10 @@ init([Name, ConnData, Backend, Args]) ->
       #{},
       [
        #{
+         id => dispatcher,
+         start => {jup_kernel_dispatcher, start_link, [Name]}
+       },
+       #{
          id => heartbeat,
          start => {jup_kernel_heartbeat_srv, start_link, [Name, ConnData]}
        },
@@ -84,8 +88,8 @@ init([Name, ConnData, Backend, Args]) ->
        #{ id => io, start => {jup_kernel_io, start_link, [Name]}},
 
        #{
-         id => backend,
-         start => {jup_kernel_backend, start_link, [Name, Node, Backend, BArgs]}
+         id => executor,
+         start => {jup_kernel_executor, start_link, [Name, Node, Backend, BArgs]}
        }
       ]
      }
