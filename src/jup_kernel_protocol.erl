@@ -193,7 +193,7 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
             {error, ResMsg#{ execution_count => ExecCounter }}
     end,
 
-    do_status(Name, idle, Msg).
+    do_status(Name, idle, Msg);
 
 
 do_process(Name, _Source, <<"is_complete_request">>, Msg) ->

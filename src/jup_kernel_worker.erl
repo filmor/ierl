@@ -85,7 +85,9 @@ handle_info({call, Ref, Func, Args, Msg}, State) ->
     {noreply, S1};
 
 
-handle_info({exec_result, Ref, Result, NewState}) ->
+handle_info({exec_result, Ref, Result, NewState}, State) ->
+    % TODO: Use this
+    {noreply, State};
 
 
 handle_info(_Else, State) ->

@@ -9,6 +9,10 @@
         exec_counter/1,
 
         execute/5,
+        kernel_info/2,
+        is_complete/3,
+        complete/4,
+        inspect/5,
         interrupt/2
        ]).
 
@@ -47,6 +51,21 @@
           do_interrupt :: function() | undefined
          }).
 
+
+
+-type exec_err() :: {error, Type :: atom(), Reason :: atom(),
+                     StackTrace :: [binary()] | binary()}.
+-type execute_res() :: {ok, jup_display:type()} | exec_err().
+
+
+-type complete_res() :: [binary()].
+
+
+-type is_complete_res() :: complete | invalid | {incomplete, binary()} |
+                           incomplete | unknown.
+
+-type inspect_res() :: {ok, jup_display:type()} | not_found.
+-type kernel_info_res() :: map().
 
 -define(FWD_CALL(Name, Args, Msg, State),
         case State#state.Name of
@@ -96,7 +115,7 @@ inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
     do_call(Name, do_inspect, [Code, CursorPos, DetailLevel], Msg).
 
 -spec interrupt(jupyter:name(), jup_msg:type()) -> call_res(ok).
-interrupt(Name, Code, CursorPos, DetailLevel, Msg) ->
+interrupt(Name, Msg) ->
     do_call(Name, do_interrupt, [], Msg).
 
 init([Name, Node, Backend, BackendArgs]) ->

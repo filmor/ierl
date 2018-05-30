@@ -35,7 +35,7 @@
          }).
 
 
--spec start_link(jupyter:name(), atom(), atom(), integer(),
+-spec start_link(jupyter:name(), atom(), integer(),
                  jup_connection_file:data()) ->
     {ok, pid()}.
 

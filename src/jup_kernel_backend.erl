@@ -153,7 +153,7 @@ inspect(Name, Code, CursorPos, DetailLevel, Msg) ->
     do_call(Name, do_inspect, [Code, CursorPos, DetailLevel], Msg).
 
 -spec interrupt(jupyter:name(), jup_msg:type()) -> call_res(ok).
-interrupt(Name, Code, CursorPos, DetailLevel, Msg) ->
+interrupt(Name, Msg) ->
     do_call(Name, do_interrupt, [], Msg).
 
 init([Name, Node, Backend, BackendArgs]) ->
