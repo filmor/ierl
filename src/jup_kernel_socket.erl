@@ -118,6 +118,6 @@ do_receive_multipart({Name, PortName}, Socket, SignatureKey) ->
                 [MsgType, lager:pr(Decoded, ?MODULE)]
                ),
 
-    jup_kernel_dispatcher:push(Name, PortName, {MsgType, Decoded}),
+    jup_kernel_executor:push(Name, PortName, Decoded),
 
     do_receive_multipart({Name, PortName}, Socket, SignatureKey).

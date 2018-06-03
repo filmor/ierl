@@ -124,15 +124,16 @@ put_chars(Chars, State) ->
         undefined ->
             {error, no_jup_msg_found};
         Msg ->
-            jup_kernel_protocol:do_iopub(
-              State#state.name,
-              stream,
-              #{
-                name => stdout,
-                text => Chars
-               },
-              Msg
-             ),
+            Content = #{ name => stdout, text => Chars },
+
+            Msg1 = jup_msg:add_headers(
+                     #jup_msg{content=Content},
+                     Msg,
+                     stream
+                    ),
+
+            jup_kernel_iopub_srv:send(State#state.name, Msg1),
+
             ok
     end.
 
@@ -156,15 +157,17 @@ display(Ref, Map, MsgType, State) ->
             lager:info("~p", [Map]),
             {error, no_jup_msg_found};
         Msg ->
-            jup_kernel_protocol:do_iopub(
-              State#state.name,
-              MsgType,
-              #{
-                data => Map,
-                metadata => #{},
-                transient => #{ display_id => Ref }
-              },
-              Msg
-             ),
+            Content = #{
+              data => Map,
+              metadata => #{},
+              transient => #{ display_id => Ref }
+             },
+
+            Msg1 = jup_msg:add_headers(
+                     #jup_msg{content=Content}, Msg, MsgType
+                    ),
+
+            jup_kernel_iopub_srv:send(State#state.name, Msg1),
+
             ok
     end.

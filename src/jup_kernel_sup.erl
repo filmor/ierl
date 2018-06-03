@@ -67,10 +67,6 @@ init([Name, ConnData, Backend, Args]) ->
       #{},
       [
        #{
-         id => dispatcher,
-         start => {jup_kernel_dispatcher, start_link, [Name]}
-       },
-       #{
          id => heartbeat,
          start => {jup_kernel_heartbeat_srv, start_link, [Name, ConnData]}
        },

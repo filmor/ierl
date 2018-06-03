@@ -3,8 +3,8 @@
 -behaviour(gen_server).
 
 -export([
-         start_link/3,
-         start_link/4
+         start_link/4,
+         push/3
         ]).
 
 
@@ -22,73 +22,62 @@
           pid :: pid(),
           backend :: module(),
           backend_state :: any(),
-          executing_pid = undefined :: pid() | undefined
+          exec_pid = undefined :: pid() | undefined,
+          busy = false :: boolean(),
+          queues :: map()
          }).
 
+-define(QUEUES, [control, shell]).
 
 -dialyzer({nowarn_function, register_msg_to_io/1}).
 
--spec start_link(jupyter:name(), module(), list()) -> {ok, pid()}.
-start_link(Name, Backend, BackendArgs) ->
-    IOPid = jup_kernel_io:get_pid(Name),
-    Args = [self(), IOPid, Backend, BackendArgs],
-
-    gen_server:start_link(?MODULE, Args, []).
+-spec push(pid(), control | shell, jup_msg:type()) -> ok.
+push(Pid, Queue, Msg) ->
+    gen_server:cast(Pid, {process, Queue, Msg}).
 
 
--spec start_link(atom(), atom(), module(), list()) -> pid().
-start_link(Name, Node, Backend, BackendArgs) ->
+-spec start_link(jupyter:name(), atom(), module(), list()) ->
+    {ok, pid()}.
+start_link(_Name, Node, Backend, BackendArgs) when Node =:= node() ->
+    Args = [self(), Backend, BackendArgs],
+    gen_server:start_link(?MODULE, Args, []);
+
+start_link(_Name, Node, Backend, BackendArgs) ->
     % TODO: Clean up all modules that are pushed to the other node? Use EXIT
     % signal to check whether we lost connection and purge all modules that were
     % loaded from here and didn't exist before.
-    IOPid = jup_kernel_io:get_pid(Name),
     jup_util:copy_to_node(Node, Backend),
-    Args = [self(), IOPid, Backend, BackendArgs],
+    Args = [self(), Backend, BackendArgs],
 
     rpc:call(Node, gen_server, start_link, [?MODULE, Args, []]).
 
 
-init([Pid, IOPid, Backend, BackendArgs]) ->
-    erlang:group_leader(IOPid, self()),
+init([Pid, Backend, BackendArgs]) ->
+    process_flag(trap_exit, true),
     State = #state{
                pid=Pid,
                backend=Backend,
                backend_state=Backend:init(BackendArgs)
               },
 
-    Pid ! init_complete,
+    State1 = restart_exec_process(State),
 
-    {ok, State}.
-
-
-handle_info({call, Ref, Func, Args, Msg}, State) ->
-    S1 =
-    try
-        register_msg_to_io(Msg),
-        Args1 = Args ++ [Msg, State#state.backend_state],
-
-        {Res, NewState} =
-        case erlang:apply(State#state.backend, Func, Args1) of
-            {R, S} -> {R, S};
-            {R, _Extra, S} -> {R, S}
-        end,
-
-        State#state.pid ! {Ref, Res},
-        State#state{backend_state=NewState}
-    catch
-        Type:Reason ->
-            State#state.pid !
-            {Ref, exec_error, {Type, Reason, erlang:get_stacktrace()}},
-            State
-    end,
-
-    {noreply, S1};
+    {ok, State1}.
 
 
-%handle_info({exec_result, Ref, Result, NewState}, State) ->
-%    % TODO: Use this
-%    {noreply, State};
+handle_info({done, BackendState}, State) ->
+    State1 = State#state{backend_state=BackendState, busy=false},
+    State2 = trigger_execution(State1),
+    {noreply, State2};
 
+handle_info({'EXIT', Pid, _Reason}, State)
+  when State#state.exec_pid =:= Pid ->
+    State1 = restart_exec_process(State),
+    {noreply, State1};
+
+handle_info({'EXIT', Pid, Reason}, State)
+  when State#state.pid =:= Pid ->
+    {stop, Reason, State};
 
 handle_info(_Else, State) ->
     % io:write(_Else),
@@ -96,16 +85,39 @@ handle_info(_Else, State) ->
     {noreply, State}.
 
 
-handle_cast(Cast, _State) ->
-    error({invalid_cast, Cast}).
+handle_cast({process, Queue, Msg}, State) ->
+    MsgType = jup_msg:msg_type(Msg),
+
+    NewState =
+    case MsgType of
+        <<"interrupt_request">> ->
+            exit(State#state.exec_pid, interrupt),
+            State1 = init_queues(State),
+            State2 = restart_exec_process(State1),
+            State2;
+        <<"execute_request">> ->
+            State1 = enqueue(Queue, Msg, State),
+            State1;
+        _Other ->
+            jup_kernel_protocol:process_message(
+              State#state.pid, Queue,
+              State#state.backend, State#state.backend_state,
+              MsgType, Msg
+             )
+    end,
+
+    % Always try to trigger an execution
+    FinalState = trigger_execution(NewState),
+
+    {noreply, FinalState}.
 
 
 handle_call(Call, _From, _State) ->
     error({invalid_call, Call}).
 
 
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, State) ->
+    exit(State#state.exec_pid, kill).
 
 
 code_change(_OldVsn, State, _Extra) ->
@@ -116,3 +128,81 @@ code_change(_OldVsn, State, _Extra) ->
 register_msg_to_io(Msg) ->
     % In separate function as io:setopts spec does not allow arbitrary options
     io:setopts([{jup_msg, Msg}]).
+
+
+restart_exec_process(State) when State#state.exec_pid =/= undefined ->
+    exit(State#state.exec_pid, restart),
+    restart_exec_process(State#state{exec_pid=undefined});
+
+restart_exec_process(State) ->
+    BackendState = State#state.backend_state,
+    Pid = State#state.pid,
+    WorkerPid = self(),
+    Backend = State#state.backend,
+
+    {ExecPid, _Ref} =
+    spawn_monitor(
+      fun () -> exec_loop(Pid, WorkerPid, Backend, BackendState) end
+     ),
+
+    State#state{exec_pid=ExecPid}.
+
+
+exec_loop(Pid, WorkerPid, Backend, BackendState) ->
+    BackendState1 =
+    receive
+        {request, Queue, Msg} ->
+            register_msg_to_io(Msg),
+
+            {_Res, NewState} =
+            case jup_kernel_protocol:process_message(
+                   Pid, Queue, Backend, BackendState, jup_msg:msg_type(Msg), Msg
+                  ) of
+                {R, S} -> {R, S};
+                {R, _Extra, S} -> {R, S}
+            end,
+
+            NewState
+    end,
+
+    WorkerPid ! {done, BackendState1},
+
+    exec_loop(Pid, WorkerPid, Backend, BackendState).
+
+
+% iterate through the queues and take elements by priority
+get_first([], Queues) ->
+    {empty, Queues};
+
+get_first([Name | Names], Queues) ->
+    case queue:out(maps:get(Name, Queues)) of
+        {empty, _Q} ->
+            get_first(Names, Queues);
+        {{value, Val}, Q} ->
+            {{value, Name, Val}, Queues#{ Name => Q }}
+    end.
+
+
+init_queues(State) ->
+    State#state{queues=maps:from_list([{Q, queue:new()} || Q <- ?QUEUES])}.
+
+
+trigger_execution(State) when State#state.busy =:= false ->
+    case get_first(?QUEUES, State#state.queues) of
+        {{value, Queue, Value}, Queues} ->
+            State#state.exec_pid ! {request, Queue, Value},
+            State#state{busy=true, queues=Queues};
+        _ ->
+            State#state{busy=false}
+    end;
+
+trigger_execution(State) ->
+    State.
+
+
+enqueue(Port, Message, State) ->
+    Queues = State#state.queues,
+    Queue = maps:get(Port, Queues),
+    State#state{
+      queues=Queues#{ Port => queue:in(Message, Queue) }
+     }.

@@ -6,6 +6,7 @@
 -record(jup_msg, {
           uuids = []          :: [binary()],
           header = #{}        :: map(),
+          type = <<>>         :: binary(),
           parent_header = #{} :: map(),
           metadata = #{}      :: map(),
           content = #{}       :: map(),
