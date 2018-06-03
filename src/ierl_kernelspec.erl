@@ -59,6 +59,7 @@ create(Options) ->
       language => jup_util:call_if_exported(
                     BackendModule, language, [], erlang
                    ),
+      interrupt_mode => <<"message">>,
       env => Env
     },
 

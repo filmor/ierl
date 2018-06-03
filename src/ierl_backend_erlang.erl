@@ -6,18 +6,21 @@
 -export([
          init/1,
          deps/0,
-         do_kernel_info/2,
-         do_execute/3,
-         do_is_complete/3,
-         do_complete/4,
-         opt_spec/0
+         opt_spec/0,
+
+         kernel_info/2,
+         execute/3,
+         exec_counter/1,
+         is_complete/3,
+         complete/4
         ]).
 
 
 -record(state, {
           bindings :: erl_eval:bindings(),
           records :: map(),
-          modules :: map()
+          modules :: map(),
+          counter = 0 :: integer()
          }).
 
 
@@ -40,7 +43,7 @@ deps() ->
     [ierl_versions, lager, error_logger_lager_h, lager_trunc_io].
 
 
-do_kernel_info(_Msg, State) ->
+kernel_info(_Msg, _State) ->
     Content =
     #{
       implementation => ?MODULE,
@@ -53,15 +56,17 @@ do_kernel_info(_Msg, State) ->
        }
      },
 
-    {Content, State}.
+    Content.
 
 
-do_execute(Code, _Msg, State) ->
+execute(Code, _Msg, State) ->
+    Counter = State#state.counter,
     try
         {Value, State1} = evaluate(binary_to_list(Code), State),
         % TODO: Format records
         Str = iolist_to_binary(io_lib:format("~p~n", [Value])),
-        {{ok, Str}, State1}
+        Counter1 = Counter + 1,
+        {{ok, Str}, Counter1, State1#state{counter=Counter1}}
     catch
         Type:Reason ->
             % lager:debug("Error: ~p:~p", [Type, Reason]),
@@ -78,11 +83,14 @@ do_execute(Code, _Msg, State) ->
                   Stacktrace
                  ],
 
-            {{error, Type, Reason1, St}, State}
+            {{error, Type, Reason1, St}, Counter, State}
     end.
 
+exec_counter(State) ->
+    State#state.counter.
 
-do_complete(Code, CursorPos, _Msg, State) ->
+complete(Code, CursorPos, _Msg, _State) ->
+    % TODO: Use the existing bindings as well
     L = lists:sublist(binary_to_list(Code), CursorPos),
     Res = case edlin_expand:expand(lists:reverse(L)) of
               {yes, Expansion, []} ->
@@ -93,10 +101,10 @@ do_complete(Code, CursorPos, _Msg, State) ->
                   [Name || {Name, _Arity} <- Matches]
           end,
 
-    {[list_to_binary(R) || R <- Res], State}.
+    [list_to_binary(R) || R <- Res].
 
 
-do_is_complete(Code, _Msg, State) ->
+is_complete(Code, _Msg, _State) ->
     % TODO: Check if module is complete by looking for two empty lines at the
     % end?
     Res = case erl_scan:string(binary_to_list(Code)) of
@@ -106,7 +114,7 @@ do_is_complete(Code, _Msg, State) ->
                   invalid
           end,
 
-    {Res, State}.
+    Res.
 
 
 evaluate(Expression, State) ->

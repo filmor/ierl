@@ -6,17 +6,20 @@
 -export([
          init/1,
          deps/0,
-         do_kernel_info/2,
-         do_execute/3,
-         do_is_complete/3,
-         do_complete/4,
          opt_spec/0,
-         language/0
+         language/0,
+
+         kernel_info/2,
+         execute/3,
+         exec_counter/1,
+         is_complete/3,
+         complete/4
         ]).
 
 
 -record(state, {
-          env
+          env,
+          counter = 0
          }).
 
 
@@ -40,7 +43,7 @@ deps() ->
     [ierl_versions].
 
 
-do_kernel_info(_Msg, State) ->
+kernel_info(_Msg, _State) ->
     Content =
     #{
       implementation => ?MODULE,
@@ -55,10 +58,11 @@ do_kernel_info(_Msg, State) ->
        }
      },
 
-    {Content, State}.
+    Content.
 
 
-do_execute(Code, _Msg, State) ->
+execute(Code, _Msg, State) ->
+    Counter = State#state.counter,
     try
         {Res, NewState} =
             lfe_shell:run_string(binary_to_list(Code), State#state.env),
@@ -66,7 +70,9 @@ do_execute(Code, _Msg, State) ->
         NewBindings = element(2, NewState),
         Res1 = jup_util:ensure_binary(lfe_io_pretty:term(Res)),
 
-        {{ok, Res1}, State#state{env=NewBindings}}
+        Counter1 = Counter + 1,
+
+        {{ok, Res1}, Counter1, State#state{env=NewBindings, counter=Counter1}}
     catch
         Type:Reason ->
             Stacktrace = format_stacktrace(erlang:get_stacktrace()),
@@ -77,11 +83,15 @@ do_execute(Code, _Msg, State) ->
                   | Stacktrace
                  ],
 
-            {{error, Type, Reason1, St}, State}
+            {{error, Type, Reason1, St}, Counter, State}
     end.
 
 
-do_is_complete(Code, _Msg, State) ->
+exec_counter(State) ->
+    State#state.counter.
+
+
+is_complete(Code, _Msg, _State) ->
     Res = case lfe_scan:string(binary_to_list(Code), 1) of
               {ok, Tokens, _} ->
                   case lfe_parse:sexpr(Tokens) of
@@ -97,10 +107,12 @@ do_is_complete(Code, _Msg, State) ->
                   invalid
           end,
 
-    {Res, State}.
+    Res.
 
 
-do_complete(Code, CursorPos, _Msg, State) ->
+complete(Code, CursorPos, _Msg, State) ->
+    % TODO: Check in the environment for completables
+    _Env = State#state.env,
     L = lists:sublist(binary_to_list(Code), CursorPos),
     Res = case lfe_edlin_expand:expand(lists:reverse(L)) of
               {yes, Expansion, []} ->
@@ -111,7 +123,7 @@ do_complete(Code, CursorPos, _Msg, State) ->
                   [Name || {Name, _Arity} <- Matches]
           end,
 
-    {[list_to_binary(R) || R <- Res], State}.
+    [list_to_binary(R) || R <- Res].
 
 
 format_stacktrace(Stacktrace) ->

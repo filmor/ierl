@@ -5,19 +5,23 @@
 
 -export([
          init/1,
+
          deps/0,
-         do_kernel_info/2,
-         do_execute/3,
-         do_is_complete/3,
-         do_complete/4,
          opt_spec/0,
-         language/0
+         language/0,
+
+         kernel_info/2,
+         execute/3,
+         exec_counter/1,
+         is_complete/3,
+         complete/4
         ]).
 
 
 -record(state, {
           bindings = [],
-          modules
+          modules,
+          counter = 0
          }).
 
 
@@ -56,7 +60,7 @@ deps() ->
     [ierl_versions, ierl_util].
 
 
-do_kernel_info(_Msg, State) ->
+kernel_info(_Msg, _State) ->
     Content =
     #{
       implementation => ?MODULE,
@@ -70,42 +74,48 @@ do_kernel_info(_Msg, State) ->
        }
      },
 
-    {Content, State}.
+    Content.
 
 
-do_execute(Code, _Msg, State) ->
+execute(Code, _Msg, State) ->
+    Counter = State#state.counter,
     try
         {Res, NewBindings} =
             'Elixir.Code':eval_string(Code, State#state.bindings),
 
         Res1 = 'Elixir.Kernel':inspect(Res),
+        Counter1 = Counter + 1,
 
-        {{ok, Res1}, State#state{bindings=NewBindings}}
+        {
+         {ok, Res1}, Counter1,
+         State#state{bindings=NewBindings, counter=Counter1}
+        }
     catch
         Type:Error ->
             Normalized = 'Elixir.Exception':normalize(Type, Error),
             Msg = 'Elixir.Exception':message(Normalized),
             Formatted = 'Elixir.Exception':format(Type, Normalized),
 
-            {{error, Type, Msg, [Formatted]}, State}
+            {{error, Type, Msg, [Formatted]}, Counter, State}
+    end.
+
+exec_counter(State) ->
+    State#state.counter.
+
+is_complete(Code, _Msg, _State) ->
+    try
+        'Elixir.Code':'string_to_quoted!'(Code),
+        complete
+    catch
+        error:#{ '__struct__' := 'Elixir.TokenMissingError'} ->
+            incomplete;
+        error:_Other ->
+            invalid
     end.
 
 
-do_is_complete(Code, _Msg, State) ->
-    Res = try
-              'Elixir.Code':'string_to_quoted!'(Code),
-              complete
-          catch
-              error:#{ '__struct__' := 'Elixir.TokenMissingError'} ->
-                  incomplete;
-              error:_Other ->
-                  invalid
-          end,
-
-    {Res, State}.
-
-
-do_complete(Code, CursorPos, _Msg, State) ->
+complete(Code, CursorPos, _Msg, _State) ->
+    % TODO: Match in the environment
     L = lists:sublist(binary_to_list(Code), CursorPos),
     Res = case 'Elixir.IEx.Autocomplete':expand(lists:reverse(L)) of
               {yes, Expansion, []} ->
@@ -122,7 +132,7 @@ do_complete(Code, CursorPos, _Msg, State) ->
                   ]
           end,
 
-    {[list_to_binary(R) || R <- Res], State}.
+    [list_to_binary(R) || R <- Res].
 
 
 split_arity(Str) ->
