@@ -5,8 +5,10 @@
 
 -include("internal.hrl").
 
+-define(DEBUG, 1).
+
 -ifdef(DEBUG).
--define(LOG(Severity, Msg, Args), lager:log(Severity, Msg, Args)).
+-define(LOG(Severity, Msg, Args), lager:log(Severity, self(), Msg, Args)).
 -else.
 -define(LOG(Severity, Msg, Args), ok).
 -endif.
@@ -124,8 +126,10 @@ do_process(Executor, Backend, BackendState, <<"execute_request">>, Msg) ->
     % TODO Pass on current exec_counter, such that messages can be ignored, i.e.
     % to implement StopOnError (if error occured on ExecCounter = n => ignore
     % all execution attempts of the same execcounter
-    {Res, ExecCounter, Metadata} =
-    Backend:execute(Code, Silent, StoreHistory, Msg, BackendState),
+    % TODO: Pass Silent and StoreHistory on? Probably better handle this in the
+    % worker...
+    {Res, ExecCounter, BackendState1} =
+    Backend:execute(Code, Msg, BackendState),
 
     Res1 =
     case Res of
@@ -135,7 +139,7 @@ do_process(Executor, Backend, BackendState, <<"execute_request">>, Msg) ->
               #{
                   execution_count => ExecCounter,
                   data => jup_display:to_map(Value),
-                  metadata => Metadata
+                  metadata => #{} % Metadata
               },
               Msg
              ),
@@ -246,8 +250,8 @@ status(Executor, Status, Parent) ->
 
 iopub(Executor, MsgType, Msg, Parent) ->
     ?LOG(debug, "Publishing IO ~p:~n~p", [MsgType, Msg]),
-    Msg = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
-    jup_kernel_executor:iopub(Executor, Msg).
+    Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
+    jup_kernel_executor:iopub(Executor, Msg1).
 
 
 to_reply_type(MsgType) ->

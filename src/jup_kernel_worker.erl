@@ -24,7 +24,7 @@
           backend_state :: any(),
           exec_pid = undefined :: pid() | undefined,
           busy = false :: boolean(),
-          queues :: map()
+          queues :: map() | undefined
          }).
 
 -define(QUEUES, [control, shell]).
@@ -60,9 +60,10 @@ init([Pid, Backend, BackendArgs]) ->
                backend_state=Backend:init(BackendArgs)
               },
 
-    State1 = restart_exec_process(State),
+    State1 = init_queues(State),
+    State2 = restart_exec_process(State1),
 
-    {ok, State1}.
+    {ok, State2}.
 
 
 handle_info({done, BackendState}, State) ->
@@ -103,7 +104,8 @@ handle_cast({process, Queue, Msg}, State) ->
               State#state.pid, Queue,
               State#state.backend, State#state.backend_state,
               MsgType, Msg
-             )
+             ),
+            State
     end,
 
     % Always try to trigger an execution
@@ -167,7 +169,7 @@ exec_loop(Pid, WorkerPid, Backend, BackendState) ->
 
     WorkerPid ! {done, BackendState1},
 
-    exec_loop(Pid, WorkerPid, Backend, BackendState).
+    exec_loop(Pid, WorkerPid, Backend, BackendState1).
 
 
 % iterate through the queues and take elements by priority

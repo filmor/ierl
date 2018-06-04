@@ -92,6 +92,7 @@ handle_cast(_Msg, _State) ->
 
 
 handle_call({send, Msg = #jup_msg{}}, _From, State) ->
+    lager:debug("Sending: ~p", [lager:pr(Msg, ?MODULE)]),
     Encoded = jup_msg:encode(Msg, State#state.key),
     chumak:send_multipart(State#state.socket, Encoded),
     {reply, ok, State}.
