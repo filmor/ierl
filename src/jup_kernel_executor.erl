@@ -8,8 +8,9 @@
         start_link/4,
         push/3,
 
-        iopub/2,
-        reply/3,
+        status/3,
+        iopub/4,
+        reply/5,
         stop/1
        ]).
 
@@ -47,17 +48,45 @@ push(Name, Queue, Msg) ->
     gen_server:cast(?NAME(Name), {push, Queue, Msg}).
 
 
--spec iopub(pid(), jup_msg:type()) -> ok.
-iopub(Pid, Msg) ->
-    gen_server:cast(Pid, {iopub, Msg}).
+-spec status(pid(), atom(), jup_msg:type()) -> ok.
+status(Executor, Status, Parent) ->
+    iopub(Executor, status, #{ execution_state => Status }, Parent).
 
--spec reply(pid(), control | shell, jup_msg:type()) -> ok.
-reply(Pid, Queue, Msg) ->
-    gen_server:cast(Pid, {reply, Queue, Msg}).
+
+-spec iopub(pid(), binary(), jup_msg:type() | map(), jup_msg:type()) -> ok.
+iopub(Executor, MsgType, Msg, Parent) ->
+    ?LOG(debug, "Publishing IO ~p:~n~p", [MsgType, Msg]),
+    Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
+    gen_server:cast(Executor, {iopub, Msg1}).
+
+
+-spec reply(pid(), term(), atom(), jup_msg:type() | map(), jup_msg:type()) ->
+    ok.
+reply(Executor, Port, Status, NewMsg, Msg) ->
+    ?LOG(debug, "Replying to ~p with status ~p and content ~p",
+         [Port, Status, NewMsg]
+        ),
+
+    NewMsg1 = case NewMsg of
+                  Map when is_map(Map) ->
+                      #jup_msg{content=Map};
+                  _ ->
+                      NewMsg
+              end,
+
+    NewMsg2 = #jup_msg{content=(NewMsg1#jup_msg.content)#{ status => Status }},
+
+    Reply = jup_msg:add_headers(
+              NewMsg2, Msg,
+              to_reply_type(jup_msg:msg_type(Msg))
+             ),
+
+    gen_server:cast(Executor, {reply, Port, Reply}).
+
 
 -spec stop(pid()) -> ok.
 stop(Pid) ->
-    gen_server:cast(Pid, stop).
+    gen_server:cast(Pid, {stop, no_restart}).
 
 
 init([Name, Node, Backend, BackendArgs]) ->
@@ -103,3 +132,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+
+-spec to_reply_type(binary()) -> binary().
+to_reply_type(MsgType) ->
+    binary:replace(MsgType, <<"request">>, <<"reply">>).

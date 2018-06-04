@@ -1,5 +1,7 @@
 -module(jup_kernel_worker).
 
+-include("internal.hrl").
+
 -behaviour(gen_server).
 
 -export([
@@ -24,7 +26,8 @@
           backend_state :: any(),
           exec_pid = undefined :: pid() | undefined,
           busy = false :: boolean(),
-          queues :: map() | undefined
+          queues :: map() | undefined,
+          current = undefined
          }).
 
 -define(QUEUES, [control, shell]).
@@ -73,29 +76,40 @@ handle_info({done, BackendState}, State) ->
 
 handle_info({'EXIT', Pid, _Reason}, State)
   when State#state.exec_pid =:= Pid ->
+    ?LOG(debug, "Received EXIT on exec process, reason ~p, restarting", [_Reason]),
     State1 = restart_exec_process(State),
-    {noreply, State1};
+    State2 = trigger_execution(State1),
+    {noreply, State2};
 
 handle_info({'EXIT', Pid, Reason}, State)
   when State#state.pid =:= Pid ->
+    ?LOG(debug, "Received EXIT from parent, stopping", []),
     {stop, Reason, State};
 
 handle_info(_Else, State) ->
     % io:write(_Else),
     % State#state.pid ! {log, _Else},
+    ?LOG(debug, "Received unexpected message: ~p", [_Else]),
     {noreply, State}.
 
 
 handle_cast({process, Queue, Msg}, State) ->
     MsgType = jup_msg:msg_type(Msg),
 
+    ?LOG(debug, "Received request of type ~s on ~s", [MsgType, Queue]),
+
     NewState =
     case MsgType of
         <<"interrupt_request">> ->
+            ?LOG(debug, "Received interrupt request for ~p",
+                 [State#state.exec_pid]
+                ),
             exit(State#state.exec_pid, interrupt),
+
+            publish_interruption(State),
+
             State1 = init_queues(State),
-            State2 = restart_exec_process(State1),
-            State2;
+            State1;
         <<"execute_request">> ->
             State1 = enqueue(Queue, Msg, State),
             State1;
@@ -137,32 +151,35 @@ restart_exec_process(State) when State#state.exec_pid =/= undefined ->
     restart_exec_process(State#state{exec_pid=undefined});
 
 restart_exec_process(State) ->
+    ?LOG(debug, "Restarting exec process", []),
     BackendState = State#state.backend_state,
     Pid = State#state.pid,
     WorkerPid = self(),
     Backend = State#state.backend,
 
-    {ExecPid, _Ref} =
-    spawn_monitor(
+    ExecPid =
+    spawn_link(
       fun () -> exec_loop(Pid, WorkerPid, Backend, BackendState) end
      ),
 
-    State#state{exec_pid=ExecPid}.
+    ?LOG(debug, "Started exec process with PID ~p", [ExecPid]),
+
+    State#state{exec_pid=ExecPid, busy=false}.
 
 
+-spec exec_loop(pid(), pid(), module(), term()) -> no_return().
 exec_loop(Pid, WorkerPid, Backend, BackendState) ->
     BackendState1 =
     receive
         {request, Queue, Msg} ->
             register_msg_to_io(Msg),
 
+            <<"execute_request">> = jup_msg:msg_type(Msg),
+
             {_Res, NewState} =
-            case jup_kernel_protocol:process_message(
-                   Pid, Queue, Backend, BackendState, jup_msg:msg_type(Msg), Msg
-                  ) of
-                {R, S} -> {R, S};
-                {R, _Extra, S} -> {R, S}
-            end,
+            jup_kernel_protocol:process_exec(
+              Pid, Queue, Backend, BackendState, Msg
+             ),
 
             NewState
     end,
@@ -186,6 +203,7 @@ get_first([Name | Names], Queues) ->
 
 
 init_queues(State) ->
+    ?LOG(debug, "Reinitialising queues", []),
     State#state{queues=maps:from_list([{Q, queue:new()} || Q <- ?QUEUES])}.
 
 
@@ -193,7 +211,7 @@ trigger_execution(State) when State#state.busy =:= false ->
     case get_first(?QUEUES, State#state.queues) of
         {{value, Queue, Value}, Queues} ->
             State#state.exec_pid ! {request, Queue, Value},
-            State#state{busy=true, queues=Queues};
+            State#state{busy=true, current={Queue, Value}, queues=Queues};
         _ ->
             State#state{busy=false}
     end;
@@ -208,3 +226,22 @@ enqueue(Port, Message, State) ->
     State#state{
       queues=Queues#{ Port => queue:in(Message, Queue) }
      }.
+
+
+publish_interruption(State) when State#state.current =/= undefined ->
+    {Port, Msg} = State#state.current,
+    Executor = State#state.pid,
+
+    ResMsg = #{
+      ename => <<"interrupted">>,
+      evalue => <<"">>,
+      traceback => [],
+      execution_count => <<"interrupted">>
+     },
+
+    jup_kernel_executor:iopub(Executor, error, ResMsg, Msg),
+    jup_kernel_executor:reply(Executor, Port, error, ResMsg, Msg),
+    jup_kernel_executor:status(Executor, status, Msg);
+
+publish_interruption(_State) ->
+    ok.

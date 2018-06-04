@@ -17,4 +17,11 @@
 -define(JUP_VIA(Name, SubName), {via, jup_registry, {Name, SubName}}).
 -define(JUP_NAME(Name, SubName), {n, l, {jupyter, Name, SubName}}).
 
+% -define(DEBUG, 1).
+-ifdef(DEBUG).
+-define(LOG(Severity, Msg, Args), lager:log(Severity, self(), Msg, Args)).
+-else.
+-define(LOG(Severity, Msg, Args), ok).
+-endif.
+
 -endif.
