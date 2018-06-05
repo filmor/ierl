@@ -41,22 +41,25 @@ push(Pid, Queue, Msg) ->
 
 -spec start_link(jupyter:name(), atom(), module(), list()) ->
     {ok, pid()}.
-start_link(_Name, Node, Backend, BackendArgs) when Node =:= node() ->
-    Args = [self(), Backend, BackendArgs],
+start_link(Name, Node, Backend, BackendArgs) when Node =:= node() ->
+    IOPid = jup_kernel_io:get_pid(Name),
+    Args = [self(), IOPid, Backend, BackendArgs],
     gen_server:start_link(?MODULE, Args, []);
 
-start_link(_Name, Node, Backend, BackendArgs) ->
+start_link(Name, Node, Backend, BackendArgs) ->
     % TODO: Clean up all modules that are pushed to the other node? Use EXIT
     % signal to check whether we lost connection and purge all modules that were
     % loaded from here and didn't exist before.
+    IOPid = jup_kernel_io:get_pid(Name),
     jup_util:copy_to_node(Node, Backend),
-    Args = [self(), Backend, BackendArgs],
+    Args = [self(), IOPid, Backend, BackendArgs],
 
     rpc:call(Node, gen_server, start_link, [?MODULE, Args, []]).
 
 
-init([Pid, Backend, BackendArgs]) ->
+init([Pid, IOPid, Backend, BackendArgs]) ->
     process_flag(trap_exit, true),
+    erlang:group_leader(IOPid, self()),
     State = #state{
                pid=Pid,
                backend=Backend,
