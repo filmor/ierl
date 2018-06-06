@@ -1,132 +1,68 @@
 -module(jup_kernel_protocol).
 
+%% @doc
+%% Main jupyter procotol implementation
+
 -include("internal.hrl").
 
--export([
-         process_message/4,
-         do_iopub/4
-        ]).
+-export([process_message/6, process_exec/5]).
+
+-type queue() :: control | shell.
 
 
-% TODO: do_status(Name, starting) at startup
+% TODO: do_status(Executor, starting) at startup
 
--spec process_message(jupyter:name(), atom(), binary(), jup_msg:type()) -> ok.
-process_message(Name, Port, MsgType, Msg) ->
-    do_status(Name, busy, Msg),
-    % TODO: Catch and send error?
+-spec process_message(pid(), queue(), module(), term(), binary(),
+                      jup_msg:type()) -> _.
+process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
+    PRes =
+    try
+        do_process(Executor, Backend, BackendState, MsgType, Msg)
+    catch
+        Type:Reason ->
+            ?LOG(error, "Error in process_message, stacktrace:~n~s",
+                 [lager:pr_stacktrace(erlang:get_stacktrace(), {Type, Reason})]
+                ),
 
-    PRes = try
-               do_process(Name, Port, MsgType, Msg)
-           catch
-               Type:Reason ->
-                   lager:error("Error in process_message, stacktrace:~n~s",
-                               [lager:pr_stacktrace(
-                                  erlang:get_stacktrace(),
-                                  {Type, Reason}
-                                 )
-                               ]
-                              ),
+            {caught_error, Type, Reason}
+    end,
 
-                   {caught_error, Type, Reason}
-           end,
+    % TODO: Decide on return values, in particular we must pass the returns
+    % through such that we can reuse the BackendState
 
+    Return1 =
     case PRes of
         {Status, Result} ->
-            do_reply(Name, Port, Status, Result, Msg);
+            jup_kernel_executor:reply(Executor, Port, Status, Result, Msg);
         noreply ->
             ok;
         not_implemented ->
             ok;
         Status when is_atom(Status) ->
-            do_reply(Name, Port, Status, #{}, Msg);
-        Other ->
-            lager:error("Invalid process result: ~p", [Other])
+            jup_kernel_executor:reply(Executor, Port, Status, #{}, Msg);
+        _Other ->
+            ?LOG(error, "Invalid process result: ~p", [_Other])
     end,
-    do_status(Name, idle, Msg).
+
+    Return1.
 
 
--spec do_reply(jupyter:name(), term(), atom(), jup_msg:type() | map(),
-               jup_msg:type())
-    -> ok.
+-spec process_exec(pid(), queue(), module(), term(), jup_msg:type()) ->
+    _.
+process_exec(Executor, Queue, Backend, BackendState, Msg) ->
+    jup_kernel_executor:status(Executor, busy, Msg),
 
-do_reply(Name, Port, Status, NewMsg, Msg) ->
-    lager:debug("Replying to ~p with status ~p and content ~p",
-                [Port, Status, NewMsg]),
-
-    NewMsg1 = case NewMsg of
-                  Map when is_map(Map) ->
-                      #jup_msg{content=Map};
-                  _ ->
-                      NewMsg
-              end,
-
-    NewMsg2 = #jup_msg{content=(NewMsg1#jup_msg.content)#{ status => Status }},
-
-    Reply = jup_msg:add_headers(
-              NewMsg2, Msg,
-              to_reply_type(jup_msg:msg_type(Msg))
-             ),
-
-    jup_kernel_socket:send(Name, Port, Reply).
-
-
-do_status(Name, Status, Parent) ->
-    do_iopub(Name, status, #{ execution_state => Status }, Parent).
-
-
-do_iopub(Name, MsgType, Msg, Parent) ->
-    lager:debug("Publishing IO ~p:~n~p", [MsgType, Msg]),
-    jup_kernel_iopub_srv:send(
-      Name,
-      jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType)
-     ).
-
-
-to_reply_type(MsgType) ->
-    binary:replace(MsgType, <<"request">>, <<"reply">>).
-
-
-do_process(Name, _Source, <<"kernel_info_request">>, Msg) ->
-    Content = jup_kernel_backend:kernel_info(Name, Msg),
-
-    DefaultLanguageInfo = #{
-      name => erlang,
-      version => unknown,
-      file_extension => <<".erl">>
-     },
-
-    Defaults = #{
-      implementation => erlang_jupyter,
-      implementation_version => unknown,
-      banner => <<"erlang-jupyter-based Kernel">>
-     },
-
-    C1 = maps:merge(Defaults, Content),
-    LanguageInfo = maps:merge(
-                     DefaultLanguageInfo,
-                     maps:get(language_info, C1, #{})
-                    ),
-
-    C2 = C1#{
-           protocol_version => <<"5.2">>,
-           language_info => LanguageInfo
-          },
-
-    {ok, C2};
-
-
-do_process(Name, _Source, <<"execute_request">>, Msg) ->
     Content = Msg#jup_msg.content,
     Code = case maps:get(<<"code">>, Content) of
                <<"">> -> empty;
                Val -> Val
            end,
 
-    do_iopub(
-      Name, execute_input,
+    jup_kernel_executor:iopub(
+      Executor, execute_input,
       #{
           code => Code,
-          execution_count => jup_kernel_backend:exec_counter(Name)
+          execution_count => Backend:exec_counter(BackendState)
       },
       Msg
      ),
@@ -155,41 +91,83 @@ do_process(Name, _Source, <<"execute_request">>, Msg) ->
     % TODO Pass on current exec_counter, such that messages can be ignored, i.e.
     % to implement StopOnError (if error occured on ExecCounter = n => ignore
     % all execution attempts of the same execcounter
-    {Res, ExecCounter, Metadata} =
-    jup_kernel_backend:execute(Name, Code, Silent, StoreHistory, Msg),
+    % TODO: Pass Silent and StoreHistory on? Probably better handle this in the
+    % worker...
+    {Res, ExecCounter, BackendState1} =
+    Backend:execute(Code, Msg, BackendState),
 
+    Res1 =
     case Res of
         {ok, Value} ->
-            do_iopub(
-              Name, execute_result,
+            jup_kernel_executor:iopub(
+              Executor, execute_result,
               #{
                   execution_count => ExecCounter,
                   data => jup_display:to_map(Value),
-                  metadata => Metadata
+                  metadata => #{} % Metadata
               },
               Msg
              ),
 
-            {ok, #{ execution_count => ExecCounter, payload => [],
-                    user_expressions => #{} }};
+            ResMsg = #{
+              execution_count => ExecCounter,
+              payload => [],
+              user_expressions => #{}
+             },
+
+            jup_kernel_executor:reply(Executor, Queue, ok, ResMsg, Msg),
+            {ok, BackendState1};
 
         {error, Type, Reason, Stacktrace} ->
             ResMsg = #{
               ename => jup_util:ensure_binary(Type),
               evalue => jup_util:ensure_binary(Reason),
-              traceback => [jup_util:ensure_binary(Row) || Row <- Stacktrace]
+              traceback => [jup_util:ensure_binary(Row) || Row <- Stacktrace],
+              execution_count => ExecCounter
              },
 
-            do_iopub(Name, error, ResMsg, Msg),
+            jup_kernel_executor:iopub(Executor, error, ResMsg, Msg),
+            jup_kernel_executor:reply(Executor, Queue, error, ResMsg, Msg),
+            {error, BackendState1}
+    end,
 
-            {error, ResMsg#{ execution_count => ExecCounter }}
-    end;
+    jup_kernel_executor:status(Executor, idle, Msg),
+    Res1.
 
 
-do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
+do_process(_Executor, Backend, BackendState, <<"kernel_info_request">>, Msg) ->
+    Content = Backend:kernel_info(Msg, BackendState),
+
+    DefaultLanguageInfo = #{
+      name => erlang,
+      version => unknown,
+      file_extension => <<".erl">>
+     },
+
+    Defaults = #{
+      implementation => erlang_jupyter,
+      implementation_version => unknown,
+      banner => <<"erlang-jupyter-based Kernel">>
+     },
+
+    C1 = maps:merge(Defaults, Content),
+    LanguageInfo = maps:merge(
+                     DefaultLanguageInfo,
+                     maps:get(language_info, C1, #{})
+                    ),
+
+    C2 = C1#{
+           protocol_version => <<"5.3">>,
+           language_info => LanguageInfo
+          },
+
+    {ok, C2};
+
+
+do_process(_Executor, Backend, BackendState, <<"is_complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
     Code = maps:get(<<"code">>, Content),
-    case jup_kernel_backend:is_complete(Name, Code, Msg) of
+    case Backend:is_complete(Code, Msg, BackendState) of
         incomplete ->
             {incomplete, #{ indent => <<"  ">> }};
         {incomplete, Indent} ->
@@ -199,20 +177,13 @@ do_process(Name, _Source, <<"is_complete_request">>, Msg) ->
     end;
 
 
-do_process(Name, _Source, <<"shutdown_request">>, _Msg) ->
-    % Ignore restart for now
-    jup_kernel_sup:stop(Name),
-    init:stop(0),
-    noreply;
-
-
-do_process(Name, _Source, <<"complete_request">>, Msg) ->
+do_process(_Executor, Backend, BackendState, <<"complete_request">>, Msg) ->
     Content = Msg#jup_msg.content,
 
     Code = maps:get(<<"code">>, Content),
     CursorPos = maps:get(<<"cursor_pos">>, Content),
 
-    case jup_kernel_backend:complete(Name, Code, CursorPos, Msg) of
+    case Backend:complete(Code, CursorPos, Msg, BackendState) of
         L when is_list(L) ->
             {ok, #{
                cursor_start => CursorPos, cursor_end => CursorPos,
@@ -225,7 +196,7 @@ do_process(Name, _Source, <<"complete_request">>, Msg) ->
     end;
 
 
-do_process(Name, _Source, <<"inspect_request">>, Msg) ->
+do_process(_Executor, Backend, BackendState, <<"inspect_request">>, Msg) ->
     Content = Msg#jup_msg.content,
 
     #{
@@ -234,13 +205,16 @@ do_process(Name, _Source, <<"inspect_request">>, Msg) ->
        <<"detail_level">> := DetailLevel
     } = Content,
 
-    jup_kernel_backend:inspect(Name, Code, CursorPos, DetailLevel, Msg);
+    % TODO: Specify and handle answer
+    Backend:inspect(Code, CursorPos, DetailLevel, Msg, BackendState);
 
 
-do_process(Name, Source, MsgType, Msg) ->
-    lager:debug("Not implemented on ~s: ~p:~s~n~p", [Name, Source, MsgType,
-                                                     lager:pr(Msg, ?MODULE)
-                                                    ]
-               ),
+do_process(Executor, _Backend, _BackendState, <<"shutdown_request">>, _Msg) ->
+    % Ignore restart for now
+    jup_kernel_executor:stop(Executor),
+    noreply;
 
+
+do_process(_Executor, _Backend, _BackendState, _MsgType, _Msg) ->
+    ?LOG(debug, "Not implemented: ~s~n~p", [_MsgType, lager:pr(_Msg, ?MODULE)]),
     {error, #{}}.

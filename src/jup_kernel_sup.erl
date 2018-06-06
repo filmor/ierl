@@ -1,5 +1,8 @@
 -module(jup_kernel_sup).
 
+%% @doc
+%% Top-level supervisor of each running kernel.
+
 -behaviour(supervisor).
 
 -include("internal.hrl").
@@ -47,8 +50,8 @@ stop(Name) ->
     {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 
 init([Name, ConnData, Backend, Args]) ->
-    Socket = fun (PortName, Kind, Port) ->
-                     A = [Name, PortName, Kind, Port, ConnData],
+    Socket = fun (PortName, Port) ->
+                     A = [Name, PortName, Port, ConnData],
                      #{
                         id => PortName,
                         start => {jup_kernel_socket, start_link, A}
@@ -68,21 +71,21 @@ init([Name, ConnData, Backend, Args]) ->
          start => {jup_kernel_heartbeat_srv, start_link, [Name, ConnData]}
        },
 
-       Socket(control, router, ConnData#jup_conn_data.control_port),
-       Socket(shell, router, ConnData#jup_conn_data.shell_port),
+       Socket(control, ConnData#jup_conn_data.control_port),
+       Socket(shell, ConnData#jup_conn_data.shell_port),
 
        #{
          id => iopub,
          start => {jup_kernel_iopub_srv, start_link, [Name, ConnData]}
        },
 
-       Socket(stdin, router, ConnData#jup_conn_data.stdin_port),
+       Socket(stdin, ConnData#jup_conn_data.stdin_port),
 
        #{ id => io, start => {jup_kernel_io, start_link, [Name]}},
 
        #{
-         id => backend,
-         start => {jup_kernel_backend, start_link, [Name, Node, Backend, BArgs]}
+         id => executor,
+         start => {jup_kernel_executor, start_link, [Name, Node, Backend, BArgs]}
        }
       ]
      }

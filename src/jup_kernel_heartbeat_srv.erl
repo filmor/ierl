@@ -1,5 +1,11 @@
 -module(jup_kernel_heartbeat_srv).
 
+%% @doc
+%% Heartbeat socket implementation
+%%
+%% Opens a simple REP socket on which all messages are returned ad-verbatim to
+%% the sender. We store the last timestamp of each heartbeat.
+
 -behaviour(gen_server).
 
 -include("internal.hrl").

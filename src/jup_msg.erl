@@ -37,7 +37,7 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
         _ -> error(invalid_signature)
     end,
 
-    #jup_msg{
+    Res = #jup_msg{
        uuids = Uuids,
        header = jsx:decode(Header, [return_maps]),
        parent_header = jsx:decode(ParentHeader, [return_maps]),
@@ -45,7 +45,9 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
        content = jsx:decode(Content, [return_maps]),
 
        extra_binaries = ExtraBinaries
-      }.
+      },
+
+    Res#jup_msg{type=header_entry(Res, msg_type)}.
 
 
 -spec encode(type(), key()) -> [binary()].
@@ -81,8 +83,8 @@ header_entry(#jup_msg{header=Header}, Key) ->
 
 
 -spec msg_type(type()) -> binary().
-msg_type(#jup_msg{} = Msg) ->
-    header_entry(Msg, msg_type).
+msg_type(#jup_msg{type=Type}) ->
+    Type.
 
 -spec msg_id(type()) -> binary().
 msg_id(#jup_msg{} = Msg) ->
@@ -91,11 +93,13 @@ msg_id(#jup_msg{} = Msg) ->
 
 -spec add_headers(type(), type(), atom() | binary()) -> type().
 add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
+    MessageType1 = jup_util:ensure_binary(MessageType),
+
     Header = #{
       <<"date">> => iso8601:format(os:timestamp()),
       <<"username">> => header_entry(Parent, username),
       <<"session">> => header_entry(Parent, session),
-      <<"msg_type">> => jup_util:ensure_binary(MessageType),
+      <<"msg_type">> => MessageType1,
       <<"msg_id">> => msg_id(Parent),
       <<"version">> => ?VERSION
      },
@@ -103,5 +107,6 @@ add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
     Msg#jup_msg{
       uuids=Parent#jup_msg.uuids,
       header=Header,
-      parent_header=Parent#jup_msg.header
+      parent_header=Parent#jup_msg.header,
+      type=MessageType
      }.

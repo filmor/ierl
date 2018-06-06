@@ -92,7 +92,11 @@ copy_to_node(Node, Backend) ->
         true ->
             code:ensure_modules_loaded([Backend] ++ Deps);
         _ ->
-            Deps1 = [jup_kernel_worker, jup_display, jup_util, Backend] ++ Deps,
+            Deps1 =
+            [
+             jup_kernel_worker, jup_kernel_protocol, jup_display, jup_util,
+             jup_msg, Backend
+            ] ++ Deps,
 
             lager:debug("Copying ~p to ~p", [Node, Deps1]),
 
