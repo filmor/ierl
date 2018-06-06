@@ -54,7 +54,9 @@ start_link(Name, Node, Backend, BackendArgs) ->
     jup_util:copy_to_node(Node, Backend),
     Args = [self(), IOPid, Backend, BackendArgs],
 
-    rpc:call(Node, gen_server, start_link, [?MODULE, Args, []]).
+    Res = {ok, Pid} = rpc:call(Node, gen_server, start, [?MODULE, Args, []]),
+    link(Pid),
+    Res.
 
 
 init([Pid, IOPid, Backend, BackendArgs]) ->
