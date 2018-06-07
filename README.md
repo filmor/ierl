@@ -1,6 +1,7 @@
 # BEAM Jupyter Kernels Tool
 
 [![Build Status](https://travis-ci.org/filmor/ierl.svg?branch=master)](https://travis-ci.org/filmor/ierl)
+[![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/filmor/ierl/master)
 
 `ierl` is a command line tool based on
 [erlang-jupyter](https://github.com/filmor/erlang-jupyter) to allow running and
