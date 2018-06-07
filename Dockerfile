@@ -5,15 +5,11 @@ USER root
 # Erlang
 # Install Erlang Solutions repository
 RUN apt-get update && \
-    apt-get install -y gnupg2 && \
+    apt-get install -y gnupg2 curl apt-utils && \
     wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb && \
     dpkg -i erlang-solutions_1.0_all.deb && \
     rm erlang-solutions_1.0_all.deb && \
-    apt-get install -y apt-utils && \
-    apt-get install -y curl && \
-    apt-get install -y erlang && \
-    apt-get install -y elixir
-
+    apt-get install -y erlang elixir
 
 USER $NB_USER
 
