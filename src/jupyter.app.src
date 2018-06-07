@@ -1,6 +1,6 @@
 {application,jupyter,
              [{description,"Library to create jupyter kernels in Erlang"},
-              {vsn,"0.1.3"},
+              {vsn,"0.2.0"},
               {registered,[]},
               {applications,[kernel,stdlib,lager,chumak,uuid,jsx,iso8601,
                              gproc]},
