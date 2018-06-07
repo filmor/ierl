@@ -17,7 +17,7 @@ opt_spec() ->
        "kernel"},
       {node, undefined, "node", string, "Remote node to run against"},
       {sname, undefined, "sname", string, "Short name for this node "
-       "(defaults to the backend name"},
+       "(defaults to the backend name)"},
       {cookie, undefined, "cookie", string, "Cookie"},
       {directory, undefined, "output", string, "Instead of using "
        "jupyter kernelspec to install, just write to the given directory"},

@@ -1,5 +1,7 @@
 -module(ierl_cmd_kernel).
 
+-define(LOG_LEVEL, error).
+
 -export([
          exec/4,
          opt_spec/0
@@ -22,7 +24,7 @@ opt_spec() ->
 
 exec({BName, Backend}, ParsedArgs, BackendArgs, _BackendSpec) ->
     {ok, _} = application:ensure_all_started(lager),
-    lager:set_loglevel(lager_console_backend, error),
+    lager:set_loglevel(lager_console_backend, ?LOG_LEVEL),
 
     {ok, _Deps} = application:ensure_all_started(ierl),
 
