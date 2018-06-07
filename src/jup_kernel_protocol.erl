@@ -78,7 +78,7 @@ process_exec(Executor, Queue, Backend, BackendState, Msg) ->
     Merged = maps:merge(Defaults, Content),
 
     Silent = maps:get(<<"silent">>, Merged),
-    StoreHistory = case Silent of
+    _StoreHistory = case Silent of
                        true -> false;
                        _ -> maps:get(<<"store_history">>, Merged)
                    end,
