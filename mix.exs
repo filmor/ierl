@@ -9,7 +9,7 @@ defmodule IErl.MixProject do
     [
       app: :ierl,
       version: :erlang.list_to_binary(args[:vsn]),
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       deps: deps(config),
       erlc_options: config[:erl_opts],
       escript: [
