@@ -39,12 +39,18 @@ language() ->
 
 
 init(Args) ->
-    ElixirPath = get_elixir_path(Args),
-    ElixirAppPath = filename:join([ElixirPath, elixir, ebin]),
-    IExAppPath = filename:join([ElixirPath, iex, ebin]),
+    case code:ensure_loaded(elixir) of
+        {module, _} ->
+            % elixir is already in the code path, assume we're running embedded
+            ok;
+        _ ->
+            ElixirPath = get_elixir_path(Args),
+            ElixirAppPath = filename:join([ElixirPath, elixir, ebin]),
+            IExAppPath = filename:join([ElixirPath, iex, ebin]),
 
-    code:add_path(ElixirAppPath),
-    code:add_path(IExAppPath),
+            code:add_path(ElixirAppPath),
+            code:add_path(IExAppPath)
+    end,
 
     {ok, _} = application:ensure_all_started(elixir),
 

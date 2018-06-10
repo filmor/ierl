@@ -69,21 +69,33 @@ list_backends() ->
     do_list("Available backends", backends()).
 
 
--spec main([string()]) -> term().
-main([]) ->
+-spec main([binary() | string()]) -> term().
+main(Args) ->
+    real_main(
+      [
+       if
+           is_binary(X) -> binary_to_list(X);
+           true -> X
+       end
+       || X <- Args
+      ]
+     ).
+
+-spec real_main([string()]) -> term().
+real_main([]) ->
     % Print usage
-    main(["help"]);
+    real_main(["help"]);
 
-main(["--help"]) ->
-    main(["help"]);
+real_main(["--help"]) ->
+    real_main(["help"]);
 
-main(["help"]) ->
+real_main(["help"]) ->
     Cmd = filename:basename(escript:script_name()),
     io:format("Usage: ~s <cmd> <backend>~n~n", [Cmd]),
     list_commands(),
     list_backends();
 
-main([Command | Rest]) ->
+real_main([Command | Rest]) ->
     CmdAtom = list_to_atom(Command),
     case maps:find(CmdAtom, commands()) of
         {ok, Module} ->

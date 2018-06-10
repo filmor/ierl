@@ -12,3 +12,7 @@ rebar3
 rebar.lock
 _checkouts*/
 __pycache__/
+
+deps/
+ierl
+mix.lock
