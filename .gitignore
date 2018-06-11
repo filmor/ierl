@@ -16,3 +16,4 @@ __pycache__/
 deps/
 ierl
 mix.lock
+.*.sw[po]
