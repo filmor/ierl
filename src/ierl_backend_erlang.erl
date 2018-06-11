@@ -92,17 +92,18 @@ exec_counter(State) ->
 
 complete(Code, CursorPos, _Msg, _State) ->
     % TODO: Use the existing bindings as well
-    L = lists:sublist(binary_to_list(Code), CursorPos),
-    Res = case edlin_expand:expand(lists:reverse(L)) of
-              {yes, Expansion, []} ->
-                  [Expansion];
-              {yes, [], Matches} ->
-                  [Name || {Name, _Arity} <- Matches];
-              {no, [], Matches} ->
-                  [Name || {Name, _Arity} <- Matches]
-          end,
+    Code1 = binary_to_list(Code),
+    L = lists:sublist(Code1, CursorPos),
 
-    [list_to_binary(R) || R <- Res].
+    case edlin_expand:expand(lists:reverse(L)) of
+        {yes, Expansion, []} ->
+            [Expansion];
+        {yes, [], Matches} ->
+            {Start, End} = ierl_util:find_span(Code1, CursorPos),
+            {Start, End, [Name || {Name, _Arity} <- Matches]};
+        {no, [], _} ->
+            []
+    end.
 
 
 is_complete(Code, _Msg, _State) ->

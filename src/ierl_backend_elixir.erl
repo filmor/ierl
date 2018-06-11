@@ -123,23 +123,22 @@ is_complete(Code, _Msg, _State) ->
 
 complete(Code, CursorPos, _Msg, _State) ->
     % TODO: Match in the environment
-    L = lists:sublist(binary_to_list(Code), CursorPos),
-    Res = case 'Elixir.IEx.Autocomplete':expand(lists:reverse(L)) of
-              {yes, Expansion, []} ->
-                  [Expansion];
-              {yes, [], Matches} ->
-                  [
-                   Name ||
-                   {Name, _Arity} <- lists:map(fun split_arity/1, Matches)
-                  ];
-              {no, [], Matches} ->
-                  [
-                   Name ||
-                   {Name, _Arity} <- lists:map(fun split_arity/1, Matches)
-                  ]
-          end,
-
-    [list_to_binary(R) || R <- Res].
+    Code1 = binary_to_list(Code),
+    L = lists:sublist(Code1, CursorPos),
+    case 'Elixir.IEx.Autocomplete':expand(lists:reverse(L)) of
+        {yes, Expansion, []} ->
+            [Expansion];
+        {yes, [], Matches} ->
+            {Start, End} = ierl_util:find_span(Code1, CursorPos),
+            {Start, End,
+             [
+              Name ||
+              {Name, _Arity} <- lists:map(fun split_arity/1, Matches)
+             ]
+            };
+        {no, [], _} ->
+            []
+    end.
 
 
 inspect(_Code, _CursorPos, _Detail, _Msg, _State) ->

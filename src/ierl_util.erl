@@ -1,6 +1,13 @@
 -module(ierl_util).
 
--export([get_app_version/1, simplify/1, format_args/1]).
+-export(
+   [
+    get_app_version/1,
+    simplify/1,
+    format_args/1,
+    find_span/2
+   ]).
+
 
 -spec get_app_version(atom()) -> string().
 get_app_version(Name) ->
@@ -55,3 +62,27 @@ format_args(Map) ->
        )
      ).
 
+
+% @doc Find the span of characters (and underscores) that surround the given
+% cursor
+-spec find_span(string(), non_neg_integer()) -> {non_neg_integer(),
+                                                 non_neg_integer()}.
+find_span(String, Cursor) ->
+    {Left, Right} = lists:split(Cursor, String),
+
+    IsChar = fun (X) when X >= $a andalso X =< $z ->
+                     true;
+                 (X) when X >= $A andalso X =< $Z ->
+                     true;
+                 (X) when X >= $0 andalso X =< $9 ->
+                     true;
+                 ($_) ->
+                     true;
+                 (_) ->
+                     false
+             end,
+
+    {
+     Cursor - length(lists:takewhile(IsChar, lists:reverse(Left))),
+     Cursor + length(lists:takewhile(IsChar, Right))
+    }.
