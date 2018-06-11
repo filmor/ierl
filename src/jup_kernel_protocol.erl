@@ -180,17 +180,22 @@ do_process(_Executor, Backend, BackendState, <<"complete_request">>, Msg) ->
     Code = maps:get(<<"code">>, Content),
     CursorPos = maps:get(<<"cursor_pos">>, Content),
 
+    {CursorStart, CursorEnd, Matches} =
     case Backend:complete(Code, CursorPos, Msg, BackendState) of
-        L when is_list(L) ->
-            {ok, #{
-               cursor_start => CursorPos, cursor_end => CursorPos,
-               matches => [jup_util:ensure_binary(B) || B <- L],
-               metadata => #{}
-              }
-            };
-        not_implemented ->
-            not_implemented
-    end;
+        {Start, End, L} ->
+            {Start, End, L};
+        {Shift, L} ->
+            {max(CursorPos - Shift, 0), CursorPos, L};
+        L ->
+            {CursorPos, CursorPos, L}
+    end,
+
+    {ok, #{
+       cursor_start => CursorStart, cursor_end => CursorEnd,
+       matches => [jup_util:ensure_binary(B) || B <- Matches],
+       metadata => #{}
+      }
+    };
 
 
 do_process(_Executor, Backend, BackendState, <<"inspect_request">>, Msg) ->
