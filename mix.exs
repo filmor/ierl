@@ -22,9 +22,11 @@ defmodule IErl.MixProject do
 
   def application do
     args = get_app_src()
+    apps = args[:applications]
+    ex_apps = [:elixir, :iex]
 
     [
-      applications: args[:applications]
+      applications: apps ++ ex_apps
     ]
   end
 
