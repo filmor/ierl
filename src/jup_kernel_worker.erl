@@ -151,6 +151,8 @@ register_msg_to_io(Msg) ->
     io:setopts([{jup_msg, Msg}]).
 
 
+-dialyzer({no_return, restart_exec_process/1}).
+
 restart_exec_process(State) when State#state.exec_pid =/= undefined ->
     exit(State#state.exec_pid, restart),
     restart_exec_process(State#state{exec_pid=undefined});

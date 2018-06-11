@@ -27,9 +27,6 @@ process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
             {caught_error, Type, Reason}
     end,
 
-    % TODO: Decide on return values, in particular we must pass the returns
-    % through such that we can reuse the BackendState
-
     Return1 =
     case PRes of
         {Status, Result} ->

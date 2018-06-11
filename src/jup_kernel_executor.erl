@@ -53,7 +53,8 @@ status(Executor, Status, Parent) ->
     iopub(Executor, status, #{ execution_state => Status }, Parent).
 
 
--spec iopub(pid(), binary(), jup_msg:type() | map(), jup_msg:type()) -> ok.
+-spec iopub(pid(), jup_msg:msg_type(), jup_msg:type() | map(), jup_msg:type()) ->
+    ok.
 iopub(Executor, MsgType, Msg, Parent) ->
     ?LOG(debug, "Publishing IO ~p:~n~p", [MsgType, Msg]),
     Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),

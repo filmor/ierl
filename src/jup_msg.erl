@@ -13,9 +13,15 @@
 -define(VERSION, <<"5.1">>).
 
 -type type() :: #jup_msg{}.
+-type msg_type() :: atom() | binary().
 -type key() :: {crypto:hash_algorithms(), binary()}.
 
--export_type([key/0]).
+-export_type(
+   [
+    key/0,
+    type/0,
+    msg_type/0
+   ]).
 
 
 -spec decode([binary()], key()) -> type().
@@ -82,7 +88,7 @@ header_entry(#jup_msg{header=Header}, Key) ->
     maps:get(BinKey, Header).
 
 
--spec msg_type(type()) -> binary().
+-spec msg_type(type()) -> msg_type().
 msg_type(#jup_msg{type=Type}) ->
     Type.
 
@@ -91,7 +97,7 @@ msg_id(#jup_msg{} = Msg) ->
     header_entry(Msg, msg_id).
 
 
--spec add_headers(type(), type(), atom() | binary()) -> type().
+-spec add_headers(type(), type(), msg_type()) -> type().
 add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
     MessageType1 = jup_util:ensure_binary(MessageType),
 
@@ -108,5 +114,5 @@ add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
       uuids=Parent#jup_msg.uuids,
       header=Header,
       parent_header=Parent#jup_msg.header,
-      type=MessageType
+      type=MessageType1
      }.
