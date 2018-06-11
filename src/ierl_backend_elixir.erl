@@ -14,7 +14,8 @@
          execute/3,
          exec_counter/1,
          is_complete/3,
-         complete/4
+         complete/4,
+         inspect/5
         ]).
 
 
@@ -139,6 +140,10 @@ complete(Code, CursorPos, _Msg, _State) ->
           end,
 
     [list_to_binary(R) || R <- Res].
+
+
+inspect(_Code, _CursorPos, _Detail, _Msg, _State) ->
+    not_found.
 
 
 split_arity(Str) ->
