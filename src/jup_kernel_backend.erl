@@ -6,12 +6,13 @@
 -type exec_err() ::
     {error, Type :: atom(), Reason :: atom(), StackTrace :: stacktrace()}.
 
--type complete_res() :: [binary()]
-                      | {Shift :: non_neg_integer(), [binary()]}
+-type match() :: iolist() | binary().
+-type complete_res() :: [match()]
+                      | {Shift :: non_neg_integer(), [match()]}
                       | {
                           Start :: non_neg_integer(),
                           End :: non_neg_integer(),
-                          [binary()]
+                          [match()]
                         }.
 
 

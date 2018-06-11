@@ -190,6 +190,10 @@ do_process(_Executor, Backend, BackendState, <<"complete_request">>, Msg) ->
             {CursorPos, CursorPos, L}
     end,
 
+    Matches1 = jup_util:unique(
+                 [jup_util:ensure_binary(B) || B <- Matches]
+                ),
+
     {ok, #{
        cursor_start => CursorStart, cursor_end => CursorEnd,
        matches => [jup_util:ensure_binary(B) || B <- Matches],

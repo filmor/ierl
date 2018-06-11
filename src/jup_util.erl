@@ -11,7 +11,9 @@
          call_if_exported/3,
          call_if_exported/4,
 
-         copy_to_node/2
+         copy_to_node/2,
+
+         unique/1
         ]).
 
 
@@ -139,3 +141,9 @@ do_copy_to_node(Node, Modules) ->
         _ ->
             {error, Errs}
     end.
+
+
+% @doc Make a list contain sorted unique elements
+-spec unique(list()) -> list().
+unique(L) ->
+    lists:sort(sets:to_list(sets:from_list(L))).
