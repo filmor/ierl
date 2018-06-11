@@ -118,7 +118,7 @@ Clone this repository and run
 to download the most current [`rebar3`](http://www.rebar3.org). After this, run
 
 ```bash
-./rebar3 build
+./rebar3 escriptize
 ```
 
 to download the dependencies and compile the `escript`. It will be created in
