@@ -1,6 +1,6 @@
 #!/bin/sh
 
-escript rebar3 compile
+escript rebar3 escriptize
 
 for lang in erlang lfe elixir
 do
