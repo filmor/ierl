@@ -1,4 +1,4 @@
-FROM jupyter/minimal-notebook:59904dd7776a
+FROM jupyter/minimal-notebook:e7000ca1416d
 
 USER root
 
@@ -14,13 +14,17 @@ RUN apt-get update && \
     mix local.hex --force && \
     mix local.rebar --force
 
+COPY / ierl_repo
+RUN chown $NB_USER -R ierl_repo
+
 USER $NB_USER
 
-# Erlang, LFE and Elixir
-RUN git clone --depth 1 https://github.com/filmor/ierl.git && \
+RUN git clone ierl_repo ierl && \
     cd ierl && \
     mkdir /home/$NB_USER/.ierl && \
     mix deps.get && \
+# Build lfe explicitly for now
+    (cd deps/lfe && ~/.mix/rebar3 compile) && \
     env MIX_ENV=prod mix escript.build && \
     cp ierl /home/$NB_USER/.ierl/ierl.escript && \
     chmod +x /home/$NB_USER/.ierl/ierl.escript && \
@@ -28,4 +32,4 @@ RUN git clone --depth 1 https://github.com/filmor/ierl.git && \
     /home/$NB_USER/.ierl/ierl.escript install lfe --user && \
     /home/$NB_USER/.ierl/ierl.escript install elixir --user && \
     cd .. && \
-    rm -rf ierl
+    rm -rf ierl ierl_repo
