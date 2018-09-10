@@ -92,21 +92,18 @@ header_entry(#jup_msg{header=Header}, Key) ->
 msg_type(#jup_msg{type=Type}) ->
     Type.
 
--spec msg_id(type()) -> binary().
-msg_id(#jup_msg{} = Msg) ->
-    header_entry(Msg, msg_id).
-
 
 -spec add_headers(type(), type(), msg_type()) -> type().
 add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
     MessageType1 = jup_util:ensure_binary(MessageType),
+    MsgId = jup_util:get_uuid(),
 
     Header = #{
       <<"date">> => iso8601:format(os:timestamp()),
       <<"username">> => header_entry(Parent, username),
       <<"session">> => header_entry(Parent, session),
       <<"msg_type">> => MessageType1,
-      <<"msg_id">> => msg_id(Parent),
+      <<"msg_id">> => MsgId,
       <<"version">> => ?VERSION
      },
 
