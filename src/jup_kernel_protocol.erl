@@ -196,7 +196,7 @@ do_process(_Executor, Backend, BackendState, <<"complete_request">>, Msg) ->
 
     {ok, #{
        cursor_start => CursorStart, cursor_end => CursorEnd,
-       matches => [jup_util:ensure_binary(B) || B <- Matches],
+       matches => Matches1,
        metadata => #{}
       }
     };
