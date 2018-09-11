@@ -31,7 +31,7 @@ get_otp_version() ->
 
     case Res of
         {ok, Version} ->
-            jup_util:ensure_binary(Version);
+            string:trim(jup_util:ensure_binary(Version));
         _ ->
             not_found
     end.
