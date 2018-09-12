@@ -154,7 +154,7 @@ do_process(_Executor, Backend, BackendState, <<"kernel_info_request">>, Msg) ->
                     ),
 
     C2 = C1#{
-           protocol_version => <<"5.3">>,
+           protocol_version => ?JUP_PROTO_VERSION,
            language_info => LanguageInfo
           },
 

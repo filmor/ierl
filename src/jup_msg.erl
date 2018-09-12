@@ -10,7 +10,6 @@
 -include("internal.hrl").
 
 -define(DELIM, <<"<IDS|MSG>">>).
--define(VERSION, <<"5.1">>).
 
 -type type() :: #jup_msg{}.
 -type msg_type() :: atom() | binary().
@@ -104,7 +103,7 @@ add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
       <<"session">> => header_entry(Parent, session),
       <<"msg_type">> => MessageType1,
       <<"msg_id">> => MsgId,
-      <<"version">> => ?VERSION
+      <<"version">> => ?JUP_PROTO_VERSION
      },
 
     Msg#jup_msg{

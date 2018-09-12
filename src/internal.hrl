@@ -16,6 +16,7 @@
 
 -define(JUP_VIA(Name, SubName), {via, jup_registry, {Name, SubName}}).
 -define(JUP_NAME(Name, SubName), {n, l, {jupyter, Name, SubName}}).
+-define(JUP_PROTO_VERSION, <<"5.3">>).
 
 % -define(DEBUG, 1).
 -ifdef(DEBUG).
