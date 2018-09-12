@@ -8,8 +8,11 @@ do
 done
 
 pytest python-tests
+EXIT=$?
 
 for lang in erlang lfe elixir
 do
     yes | jupyter kernelspec uninstall ${lang}_test
 done
+
+exit $EXIT
