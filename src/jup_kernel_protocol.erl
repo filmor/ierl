@@ -15,6 +15,8 @@
 -spec process_message(pid(), queue(), module(), term(), binary(),
                       jup_msg:type()) -> _.
 process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
+    jup_kernel_executor:status(Executor, busy, Msg),
+
     PRes =
     try
         do_process(Executor, Backend, BackendState, MsgType, Msg)
@@ -40,6 +42,8 @@ process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
         _Other ->
             ?LOG(error, "Invalid process result: ~p", [_Other])
     end,
+
+    jup_kernel_executor:status(Executor, idle, Msg),
 
     Return1.
 
