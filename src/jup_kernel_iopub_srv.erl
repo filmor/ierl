@@ -46,7 +46,15 @@ init([Name, ConnData]) ->
                     ConnData#jup_conn_data.iopub_port
                    ),
 
-    % Self = self(),
+    StartingStatus = jup_msg:add_headers(
+		       #jup_msg{
+			  content = #{ execution_state => starting }
+			 },
+		        undefined,
+			status
+		      ),
+
+    self() ! StartingStatus,
 
     {ok, #state{
             socket=Socket,

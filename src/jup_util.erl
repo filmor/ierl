@@ -7,6 +7,7 @@
          hexlify/1,
 
          get_uuid/0,
+         get_user/0,
 
          call_if_exported/3,
          call_if_exported/4,
@@ -69,6 +70,23 @@ hex(C) -> $a + C - 10.
 -spec get_uuid() -> binary().
 get_uuid() ->
     jup_util:ensure_binary(uuid:uuid_to_string(uuid:get_v4())).
+
+
+-spec get_user() -> binary().
+get_user() ->
+    L =
+    [X ||
+     X <- [os:getenv(X) || X <- ["USERNAME", "USER", "LOGNAME"]],
+     X =/= false,
+     X =/= ""
+    ],
+
+    case L of
+        [Head|_] ->
+            ensure_binary(Head);
+        _ ->
+            <<"username">>
+    end.
 
 
 -spec call_if_exported(module(), atom(), list()) -> term().

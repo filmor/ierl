@@ -82,6 +82,7 @@ encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
 
 
 -spec header_entry(type(), atom()) -> binary().
+
 header_entry(#jup_msg{header=Header}, Key) ->
     BinKey = jup_util:ensure_binary(Key),
     maps:get(BinKey, Header).
@@ -92,23 +93,37 @@ msg_type(#jup_msg{type=Type}) ->
     Type.
 
 
--spec add_headers(type(), type(), msg_type()) -> type().
-add_headers(Msg = #jup_msg{}, Parent = #jup_msg{}, MessageType) ->
+-spec add_headers(type(), type() | undefined, msg_type()) -> type().
+add_headers(Msg = #jup_msg{}, Parent, MessageType) ->
     MessageType1 = jup_util:ensure_binary(MessageType),
     MsgId = jup_util:get_uuid(),
 
+    {Username, Session} =
+    case Parent of
+        undefined ->
+            {jup_util:get_user(), jup_util:get_uuid()};
+        _ ->
+            {header_entry(Parent, username), header_entry(Parent, session)}
+    end,
+
     Header = #{
       <<"date">> => iso8601:format(os:timestamp()),
-      <<"username">> => header_entry(Parent, username),
-      <<"session">> => header_entry(Parent, session),
+      <<"username">> => Username,
+      <<"session">> => Session,
       <<"msg_type">> => MessageType1,
       <<"msg_id">> => MsgId,
       <<"version">> => ?JUP_PROTO_VERSION
      },
 
-    Msg#jup_msg{
-      uuids=Parent#jup_msg.uuids,
-      header=Header,
-      parent_header=Parent#jup_msg.header,
-      type=MessageType1
-     }.
+    Msg1 =
+    Msg#jup_msg{ header=Header, type=MessageType1 },
+
+    case Parent of
+        undefined ->
+            Msg1;
+        _ ->
+            Msg1#jup_msg{
+              uuids=Parent#jup_msg.uuids,
+              parent_header=Parent#jup_msg.header
+             }
+    end.
