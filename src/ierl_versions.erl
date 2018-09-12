@@ -31,7 +31,18 @@ get_otp_version() ->
 
     case Res of
         {ok, Version} ->
-            string:trim(jup_util:ensure_binary(Version));
+            trim(jup_util:ensure_binary(Version));
         _ ->
             not_found
+    end.
+
+
+-spec trim(binary()) -> binary().
+trim(V) ->
+    case erlang:function_exported(string, trim, 1) of
+        true ->
+            % OTP >20
+            string:trim(V);
+        _ ->
+            re:replace(V, "(^\\s+)|(\\s+$)", "", [global, {return, binary}])
     end.

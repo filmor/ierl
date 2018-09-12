@@ -12,16 +12,12 @@ class LfeKernelTests(jkt.KernelTests):
 
     completion_samples = [
         {
-            'text': '(lists:s',
+            'text': '(lists:su',
             'matches': {
-                'split',
                 'sublist',
-                'sort',
                 'subtract',
-                'splitwith',
                 'sum',
                 'suffix',
-                'seq',
             },
         },
     ]
