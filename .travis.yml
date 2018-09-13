@@ -20,7 +20,8 @@ before_install:
   - sudo apt-get install python3-pip python-dev
   - sudo apt-get install libzmq3-dev
   - ./_download_rebar3.sh
-  - ./_checkout_jupyter.sh
+# Use jupyter from Hex
+#  - ./_checkout_jupyter.sh
 
 install:
   - sudo pip3 install -U jupyter_kernel_test
