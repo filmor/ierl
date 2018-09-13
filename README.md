@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/filmor/ierl.svg?branch=master)](https://travis-ci.org/filmor/ierl)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/filmor/ierl/master)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffilmor%2Fierl.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffilmor%2Fierl?ref=badge_shield)
 
 `ierl` is a command line tool based on
 [erlang-jupyter](https://github.com/filmor/erlang-jupyter) to allow running and
@@ -130,3 +131,7 @@ For development it might make sense to check out a local instance of
 ```bash
 ./_checkout_jupyter.sh
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Ffilmor%2Fierl.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Ffilmor%2Fierl?ref=badge_large)
