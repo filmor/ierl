@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/filmor/erlang-jupyter.svg?branch=master)](https://travis-ci.com/filmor/erlang-jupyter)
+
 # erlang-jupyter
 Erlang implementation of the [Jupyter Messaging
 Specification](http://jupyter-client.readthedocs.io/en/latest/messaging.html),
