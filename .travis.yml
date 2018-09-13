@@ -20,8 +20,7 @@ before_install:
   - sudo apt-get install python3-pip python-dev
   - sudo apt-get install libzmq3-dev
   - ./_download_rebar3.sh
-# Use jupyter from Hex
-#  - ./_checkout_jupyter.sh
+  - '[[ $TRAVIS_BRANCH == master ]] || ./_checkout_jupyter.sh'
 
 install:
   - sudo pip3 install -U jupyter_kernel_test
@@ -30,6 +29,6 @@ install:
 
 script:
   # Ignore xref results
-  - ./rebar3 xref || true
+  - './rebar3 xref || true'
   - ./rebar3 dialyzer
   - ./test.sh
