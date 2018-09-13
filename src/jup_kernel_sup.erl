@@ -67,17 +67,17 @@ init([Name, ConnData, Backend, Args]) ->
       #{},
       [
        #{
+         id => iopub,
+         start => {jup_kernel_iopub_srv, start_link, [Name, ConnData]}
+       },
+
+       #{
          id => heartbeat,
          start => {jup_kernel_heartbeat_srv, start_link, [Name, ConnData]}
        },
 
        Socket(control, ConnData#jup_conn_data.control_port),
        Socket(shell, ConnData#jup_conn_data.shell_port),
-
-       #{
-         id => iopub,
-         start => {jup_kernel_iopub_srv, start_link, [Name, ConnData]}
-       },
 
        Socket(stdin, ConnData#jup_conn_data.stdin_port),
 
