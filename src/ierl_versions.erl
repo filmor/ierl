@@ -5,6 +5,8 @@
          get_app_version/1
         ]).
 
+-dialyzer({nowarn_function, trim/1}).
+
 
 -type version() :: binary() | not_found.
 
