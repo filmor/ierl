@@ -58,7 +58,7 @@ status(Executor, Status, Parent) ->
 iopub(Executor, MsgType, Msg, Parent) ->
     ?LOG(debug, "Publishing IO ~p:~n~p", [MsgType, Msg]),
     Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
-    gen_server:cast(Executor, {iopub, Msg1}).
+    gen_server:call(Executor, {iopub, Msg1}, 30 * 1000).
 
 
 -spec reply(pid(), term(), atom(), jup_msg:type() | map(), jup_msg:type()) ->
@@ -91,6 +91,7 @@ stop(Pid) ->
 
 
 init([Name, Node, Backend, BackendArgs]) ->
+    ?LOG(debug, "Started executor at ~p", [self()]),
     {ok, WorkerPid} =
     jup_kernel_worker:start_link(Name, Node, Backend, BackendArgs),
 
@@ -106,10 +107,6 @@ handle_cast({push, Port, Msg}, State) ->
     {noreply, State};
 
 
-handle_cast({iopub, Msg}, State) ->
-    jup_kernel_iopub_srv:send(State#state.name, Msg),
-    {noreply, State};
-
 handle_cast({reply, Port, Msg}, State) ->
     jup_kernel_socket:send(State#state.name, Port, Msg),
     {noreply, State};
@@ -124,8 +121,9 @@ handle_cast({stop, _Restart}, State) ->
     {noreply, State}.
 
 
-handle_call(_Call, _From, _State) ->
-    error({invalid_call, _Call}).
+handle_call({iopub, Msg}, _From, State) ->
+    jup_kernel_iopub_srv:send(State#state.name, Msg),
+    {reply, ok, State}.
 
 
 code_change(_OldVsn, State, _Extra) ->
