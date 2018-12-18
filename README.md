@@ -28,8 +28,10 @@ and it will be compiled and usable after executing.
 
 ### Elixir
 
-Since it's currently impossible to bundle Elixir, it will try to guess the path
-by running the Elixir executable, so make sure that Elixir is in your `PATH`
+If ierl has been built using `mix` (as are the releases that we provide here),
+Elixir will be embedded and work without the need to install it locally.
+Otherwise, ierl will try to guess the path by running the Elixir executable,
+so make sure that `elixir`'s binary path is included in the `PATH`
 environment variable. It is also possible to override the Elixir installation
 path using the `--path` switch on installing the kernel.
 
