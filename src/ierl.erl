@@ -126,12 +126,6 @@ main(Command, [Backend | Rest]) ->
 
 
 main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
-    % TODO Replace lager for normal commands, only use it for the actual kernel
-    application:load(lager),
-
-    application:set_env(lager, suppress_application_start_stop, true),
-    application:set_env(lager, suppress_supervisor_start_stop, true),
-
     {module, Command} = code:ensure_loaded(Command),
     {module, Backend} = code:ensure_loaded(Backend),
 

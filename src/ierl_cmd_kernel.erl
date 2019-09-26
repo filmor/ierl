@@ -1,5 +1,7 @@
 -module(ierl_cmd_kernel).
 
+-include_lib("kernel/include/logger.hrl").
+
 -define(LOG_LEVEL, error).
 
 -export([
@@ -23,8 +25,7 @@ opt_spec() ->
 
 
 exec({BName, Backend}, ParsedArgs, BackendArgs, _BackendSpec) ->
-    {ok, _} = application:ensure_all_started(lager),
-    lager:set_loglevel(lager_console_backend, ?LOG_LEVEL),
+    logger:set_primary_config(level, ?LOG_LEVEL),
 
     {ok, _Deps} = application:ensure_all_started(ierl),
 
@@ -45,7 +46,7 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, _BackendSpec) ->
     SName1 = binary_to_atom(iolist_to_binary([SName, "_", Suffix]), utf8),
 
     net_kernel:start([SName1, shortnames]),
-    lager:info("Set node name to ~p", [SName1]),
+    ?LOG_INFO("Set node name to ~p", [SName1]),
 
     case os:getenv("IERL_COOKIE") of
         false -> ok;
@@ -61,8 +62,10 @@ exec({BName, Backend}, ParsedArgs, BackendArgs, _BackendSpec) ->
                    list_to_atom(Val)
            end,
 
-    lager:info("Starting Erlang kernel with connection file ~s against ~p",
-               [JsonFile, Node]),
+    ?LOG_INFO(
+        "Starting Erlang kernel with connection file ~s against ~p",
+        [JsonFile, Node]
+    ),
 
     process_flag(trap_exit, true),
     % TODO Parse rest of the args

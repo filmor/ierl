@@ -41,7 +41,7 @@ init(_Args) ->
 
 
 deps() ->
-    [ierl_versions, lager, error_logger_lager_h, lager_trunc_io].
+    [ierl_versions].
 
 
 kernel_info(_Msg, _State) ->
@@ -69,20 +69,9 @@ execute(Code, _Msg, State) ->
         Counter1 = Counter + 1,
         {{ok, Str}, Counter1, State1#state{counter=Counter1}}
     catch
-        Type:Reason ->
-            % lager:debug("Error: ~p:~p", [Type, Reason]),
-            Stacktrace = lager:pr_stacktrace(
-                           erlang:get_stacktrace()
-                          ),
-
-            Reason1 = list_to_binary(
-                        io_lib:format("~p", [Reason])
-                       ),
-
-            St = [
-                  io_lib:format("~s:~s~n~nStacktrace:", [Type, Reason1]),
-                  Stacktrace
-                 ],
+        Type:Reason:Stacktrace ->
+            Reason1 = list_to_binary(io_lib:format("~p", [Reason])),
+            St = jup_util:format_stacktrace({Type, Reason}, Stacktrace),
 
             {{error, Type, Reason1, St}, Counter, State}
     end.
