@@ -11,16 +11,22 @@ otp_release:
   - 21.3
   - 22.1
 
-dist: bionic
+dist: xenial
 sudo: required
 
 branches:
   only:
     - master
 
+addons:
+  apt:
+    packages:
+      - libzmq3-dev
+      - python-dev
+      - python3-pip
+      - python3-setuptools
+
 before_install:
-  - sudo apt-get install python3-pip python-dev
-  - sudo apt-get install libzmq3-dev
   - ./_download_rebar3.sh
   - '[[ $TRAVIS_BRANCH == master ]] || ./_checkout_jupyter.sh'
 
