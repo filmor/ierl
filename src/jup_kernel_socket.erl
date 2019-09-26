@@ -92,7 +92,7 @@ handle_cast(_Msg, _State) ->
 
 
 handle_call({send, Msg = #jup_msg{}}, _From, State) ->
-    lager:debug("Sending: ~p", [lager:pr(Msg, ?MODULE)]),
+    ?LOG_DEBUG("Sending: ~p", [Msg]),
     Encoded = jup_msg:encode(Msg, State#state.key),
     chumak:send_multipart(State#state.socket, Encoded),
     {reply, ok, State}.
@@ -115,9 +115,10 @@ do_receive_multipart({Name, PortName}, Socket, SignatureKey) ->
     Decoded = jup_msg:decode(Mp, SignatureKey),
     MsgType = jup_msg:msg_type(Decoded),
 
-    lager:debug("Received message of type ~p:~n~p",
-                [MsgType, lager:pr(Decoded, ?MODULE)]
-               ),
+    ?LOG_DEBUG(
+        "Received message of type ~p:~n~p",
+        [MsgType, Decoded]
+    ),
 
     jup_kernel_executor:push(Name, PortName, Decoded),
 

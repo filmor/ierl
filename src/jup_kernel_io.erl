@@ -39,30 +39,31 @@ init([Name]) ->
 
 
 handle_info({io_request, From, ReplyAs, Request}, State) ->
-    lager:debug("Got IO request: ~p", [Request]),
-    {Result, State1} = try
-                          request(Request, State)
-                      catch
-                          error:Reason ->
-                               lager:debug(
-                                 "Got IO Error ~p~n~s",
-                                 [
-                                  Reason,
-                                  lager:pr_stacktrace(
-                                    erlang:get_stacktrace(),
-                                    {error, Reason}
-                                   )
-                                 ]),
-                              {{error, Reason}, State}
-                      end,
+    ?LOG_DEBUG("Got IO request: ~p", [Request]),
+    {Result, State1} =
+    try
+        request(Request, State)
+    catch
+        error:Reason:Stacktrace ->
+            ?LOG_DEBUG(
+                fun ({R, S}) ->
+                    FmtTrace = jup_util:format_stacktrace(R, S),
+                    io_lib:format(
+                        "Got IO Error ~p~n~s", [R, FmtTrace]
+                    )
+                end,
+                {Reason, Stacktrace}
+            ),
+            {{error, Reason}, State}
+    end,
 
-    lager:debug("Replying to IO request: ~p", [Result]),
+    ?LOG_DEBUG("Replying to IO request: ~p", [Result]),
 
     From ! {io_reply, ReplyAs, Result},
     {noreply, State1};
 
 handle_info(_Msg, State) ->
-    lager:debug("Got message ~p", [_Msg]),
+    ?LOG_DEBUG("Got message ~p", [_Msg]),
     {noreply, State}.
 
 
@@ -89,7 +90,7 @@ request({put_chars, Encoding, Chars}, State) ->
     {Res, State};
 
 request({put_chars, Encoding, Module, Function, Args} = _L, State) ->
-    lager:info("Called put_chars as ~p", [_L]),
+    ?LOG_DEBUG("Called put_chars as ~p", [_L]),
     request({put_chars, Encoding, apply(Module, Function, Args)}, State);
 
 request({request, Requests}, State) when is_list(Requests) ->
@@ -105,7 +106,7 @@ request({jup_display, RefOrNew, Map}, State) ->
     {display(RefOrNew, Map, State), State};
 
 request(_Req, State) ->
-    lager:debug("Unhandled IO request: ~p", [_Req]),
+    ?LOG_DEBUG("Unhandled IO request: ~p", [_Req]),
     {{error, request}, State}.
 
 
@@ -154,7 +155,7 @@ display(Ref, Map, State) ->
 display(Ref, Map, MsgType, State) ->
     case proplists:get_value(jup_msg, State#state.opts) of
         undefined ->
-            lager:info("~p", [Map]),
+            ?LOG_DEBUG("~p", [Map]),
             {error, no_jup_msg_found};
         Msg ->
             Content = #{

@@ -5,24 +5,21 @@
 -include("internal.hrl").
 
 -export([
-        start_link/4,
-        push/3,
+    start_link/4,
+    push/3,
 
-        status/3,
-        iopub/4,
-        reply/5,
-        stop/1
-       ]).
-
+    status/3,
+    iopub/4,
+    reply/5,
+    stop/1
+]).
 
 -export([
-         init/1,
-         handle_info/2,
-         handle_call/3,
-         handle_cast/2,
-         terminate/2,
-         code_change/3
-        ]).
+    init/1,
+    handle_info/2,
+    handle_call/3,
+    handle_cast/2
+]).
 
 % Implement Silent, History, AllowStdin in here
 
@@ -56,7 +53,7 @@ status(Executor, Status, Parent) ->
 -spec iopub(pid(), jup_msg:msg_type(), jup_msg:type() | map(), jup_msg:type()) ->
     ok.
 iopub(Executor, MsgType, Msg, Parent) ->
-    ?LOG(debug, "Publishing IO ~p:~n~p", [MsgType, Msg]),
+    ?LOG_DEBUG("Publishing IO ~p:~n~p", [MsgType, Msg]),
     Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
     gen_server:call(Executor, {iopub, Msg1}, 30 * 1000).
 
@@ -64,9 +61,10 @@ iopub(Executor, MsgType, Msg, Parent) ->
 -spec reply(pid(), term(), atom(), jup_msg:type() | map(), jup_msg:type()) ->
     ok.
 reply(Executor, Port, Status, NewMsg, Msg) ->
-    ?LOG(debug, "Replying to ~p with status ~p and content ~p",
-         [Port, Status, NewMsg]
-        ),
+    ?LOG_DEBUG(
+        "Replying to ~p with status ~p and content ~p",
+        [Port, Status, NewMsg]
+    ),
 
     NewMsg1 = case NewMsg of
                   Map when is_map(Map) ->
@@ -91,7 +89,7 @@ stop(Pid) ->
 
 
 init([Name, Node, Backend, BackendArgs]) ->
-    ?LOG(debug, "Started executor at ~p", [self()]),
+    ?LOG_DEBUG("Started executor at ~p", [self()]),
     {ok, WorkerPid} =
     jup_kernel_worker:start_link(Name, Node, Backend, BackendArgs),
 
@@ -124,13 +122,6 @@ handle_cast({stop, _Restart}, State) ->
 handle_call({iopub, Msg}, _From, State) ->
     jup_kernel_iopub_srv:send(State#state.name, Msg),
     {reply, ok, State}.
-
-
-code_change(_OldVsn, State, _Extra) ->
-    State.
-
-terminate(_Reason, _State) ->
-    ok.
 
 
 -spec to_reply_type(binary()) -> binary().

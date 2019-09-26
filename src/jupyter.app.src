@@ -1,12 +1,11 @@
-{application,jupyter,
-             [{description,"Library to create jupyter kernels in Erlang"},
-              {vsn,"0.3.2"},
-              {registered,[]},
-              {applications,[kernel,stdlib,lager,chumak,uuid,jsx,iso8601,
-                             gproc]},
-              {included_applications,[]},
-              {env,[]},
-              {licenses,["GPLv3"]},
-              {maintainers,["Benedikt Reinartz"]},
-              {links,[{"Github",
-                       "https://github.com/filmor/erlang-jupyter"}]}]}.
+{application, jupyter, [
+    {description,"Library to create jupyter kernels in Erlang"},
+    {vsn,"0.3.2"},
+    {registered,[]},
+    {applications,[kernel,stdlib,chumak,uuid,jsx,iso8601,gproc]},
+    {included_applications,[]},
+    {env,[]},
+    {licenses,["GPLv3"]},
+    {maintainers,["Benedikt Reinartz"]},
+    {links,[{"Github","https://github.com/filmor/erlang-jupyter"}]}
+]}.

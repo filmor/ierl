@@ -21,10 +21,16 @@ process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
     try
         do_process(Executor, Backend, BackendState, MsgType, Msg)
     catch
-        Type:Reason ->
-            ?LOG(error, "Error in process_message, stacktrace:~n~s",
-                 [lager:pr_stacktrace(erlang:get_stacktrace(), {Type, Reason})]
-                ),
+        Type:Reason:Stacktrace ->
+            ?LOG_ERROR(
+                fun ([]) ->
+                    io_lib:format(
+                        "Error in process_message, stacktrace:~n~s",
+                        [jup_util:format_stacktrace({Type, Reason}, Stacktrace)]
+                    )
+                end,
+                []
+            ),
 
             {caught_error, Type, Reason}
     end,
@@ -40,7 +46,7 @@ process_message(Executor, Port, Backend, BackendState, MsgType, Msg) ->
         Status when is_atom(Status) ->
             jup_kernel_executor:reply(Executor, Port, Status, #{}, Msg);
         _Other ->
-            ?LOG(error, "Invalid process result: ~p", [_Other])
+            ?LOG_ERROR("Invalid process result: ~p", [_Other])
     end,
 
     jup_kernel_executor:status(Executor, idle, Msg),
@@ -226,5 +232,5 @@ do_process(Executor, _Backend, _BackendState, <<"shutdown_request">>, _Msg) ->
 
 
 do_process(_Executor, _Backend, _BackendState, _MsgType, _Msg) ->
-    ?LOG(debug, "Not implemented: ~s~n~p", [_MsgType, lager:pr(_Msg, ?MODULE)]),
+    ?LOG_DEBUG("Not implemented: ~s~n~p", [_MsgType, _Msg]),
     {error, #{}}.

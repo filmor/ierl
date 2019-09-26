@@ -1,21 +1,25 @@
 -module(jup_util).
 
+-include("internal.hrl").
+
 -export([
-         split_at_delim/2,
-         ensure_binary/1,
-         ensure_string/1,
-         hexlify/1,
+    split_at_delim/2,
+    ensure_binary/1,
+    ensure_string/1,
+    hexlify/1,
 
-         get_uuid/0,
-         get_user/0,
+    get_uuid/0,
+    get_user/0,
 
-         call_if_exported/3,
-         call_if_exported/4,
+    call_if_exported/3,
+    call_if_exported/4,
 
-         copy_to_node/2,
+    copy_to_node/2,
 
-         unique/1
-        ]).
+    unique/1,
+
+    format_stacktrace/2
+]).
 
 
 -export_type([string_like/0]).
@@ -118,7 +122,7 @@ copy_to_node(Node, Backend) ->
              jup_msg, Backend
             ] ++ Deps,
 
-            lager:debug("Copying ~p to ~p", [Node, Deps1]),
+            ?LOG_DEBUG("Copying ~p to ~p", [Node, Deps1]),
 
             do_copy_to_node(Node, Deps1)
     end.
@@ -165,3 +169,21 @@ do_copy_to_node(Node, Modules) ->
 -spec unique(list()) -> list().
 unique(L) ->
     lists:sort(sets:to_list(sets:from_list(L))).
+
+
+
+-spec format_stacktrace(_, [{module(), atom(), list(_) | number(), proplists:type()}]) ->
+    iolist().
+format_stacktrace(Reason, Stacktrace) ->
+    Reason1 = io_lib:format("Error: ~p", [Reason]),
+    Trace =
+    lists:map(
+        fun ({Mod, Func, Arity, Location}) ->
+            File = proplists:get_value(file, Location),
+            Line = proplists:get_value(line, Location),
+
+            io_lib:format("~n    ~p:~p/~p (~s:~p)", [Mod, Func, Arity, File, Line])
+        end,
+        Stacktrace
+    ),
+    [Reason1, Trace].

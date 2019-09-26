@@ -3,8 +3,8 @@
 -include("internal.hrl").
 
 -export([
-         start_kernel/4
-        ]).
+    start_kernel/4
+]).
 
 -type name() :: atom().
 

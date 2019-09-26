@@ -68,7 +68,7 @@ init([Name, ConnData]) ->
 
 -spec handle_info(_, state()) -> {noreply, state()}.
 handle_info(_Msg, State) ->
-    lager:debug("Unrecognized message: ~p", [_Msg]),
+    ?LOG_DEBUG("Unrecognized message: ~p", [_Msg]),
     {noreply, State}.
 
 
