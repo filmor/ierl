@@ -98,11 +98,9 @@ complete(Code, CursorPos, _Msg, _State) ->
     case edlin_expand:expand(lists:reverse(L)) of
         {yes, Expansion, []} ->
             [Expansion];
-        {yes, [], Matches} ->
+        {_, [], Matches} ->
             {Start, End} = ierl_util:find_span(Code1, CursorPos),
-            {Start, End, [Name || {Name, _Arity} <- Matches]};
-        {no, [], _} ->
-            []
+            {Start, End, [Name || {Name, _Arity} <- Matches]}
     end.
 
 
