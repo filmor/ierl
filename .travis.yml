@@ -9,7 +9,7 @@ elixir:
 otp_release:
   - 20.3
   - 21.3
-  - 22.1
+  - 22.0
 
 dist: xenial
 sudo: required
