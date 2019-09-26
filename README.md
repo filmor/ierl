@@ -18,11 +18,16 @@ Currently, only the `f` shell function to forget a variable is implemented.
 However, in contrast to the usual `erl` shell, this backend also supports
 defining modules inline, i.e. one can have a cell
 
-    -module(my_mod).
+```erlang
+-module(my_mod).
 
-    -export([func/1]).
+-export([
+    func/1
+]).
 
-    func(X) -> X.
+func(X) ->
+    X.
+```
 
 and it will be compiled and usable after executing.
 
