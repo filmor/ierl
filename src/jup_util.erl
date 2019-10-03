@@ -119,7 +119,7 @@ copy_to_node(Node, Backend) ->
             Deps1 =
             [
              jup_kernel_worker, jup_kernel_protocol, jup_display, jup_util,
-             jup_msg, Backend
+             jup_kernel_executor, jup_msg, uuid, iso8601, Backend
             ] ++ Deps,
 
             ?LOG_DEBUG("Copying ~p to ~p", [Node, Deps1]),
