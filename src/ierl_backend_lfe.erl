@@ -75,13 +75,13 @@ execute(Code, _Msg, State) ->
 
         {{ok, Res1}, Counter1, State#state{env=NewBindings, counter=Counter1}}
     catch
-        Type:Reason ->
-            Stacktrace = format_stacktrace(erlang:get_stacktrace()),
+        Type:Reason:Stacktrace ->
+            Stacktrace1 = format_stacktrace(Stacktrace),
             Reason1 = jup_util:ensure_binary(io_lib:format("~p", [Reason])),
 
             St = [
                   io_lib:format("~s:~s~n~nStacktrace:~n", [Type, Reason1])
-                  | Stacktrace
+                  | Stacktrace1
                  ],
 
             {{error, Type, Reason1, St}, Counter, State}
