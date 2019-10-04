@@ -6,6 +6,5 @@
               {included_applications,[]},
               {env,[]},
               {licenses,["GPLv3"]},
-              {maintainers,["Benedikt Reinartz"]},
               {links,[{"Github","https://github.com/filmor/ierl"}]},
               {include_files,["mix.exs"]}]}.
