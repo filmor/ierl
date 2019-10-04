@@ -1,18 +1,8 @@
-language: elixir
-
-elixir:
-  - 1.6.6
-  - 1.7.4
-  - 1.8.2
-  - 1.9.1
+language: erlang
 
 otp_release:
   - 21.3
   - 22.0
-
-matrix:
-  exclude:
-    - { elixir: 1.6.6, otp_release: 22.0 }
 
 dist: trusty
 sudo: required
@@ -21,13 +11,7 @@ branches:
   only:
     - master
 
-before_install:
-  - ./_download_rebar3.sh
-
-install:
-  - ./rebar3 get-deps
-
 script:
   # Ignore xref results
-  - ./rebar3 xref || true
-  - ./rebar3 dialyzer
+  - rebar3 xref || true
+  - rebar3 dialyzer
