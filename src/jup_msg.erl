@@ -29,16 +29,16 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
 
     [HMAC, Header, ParentHeader, Metadata, Content | ExtraBinaries] = Suffix,
 
-    Ctx0 = crypto:hmac_init(SignatureScheme, Key),
-    Ctx1 = crypto:hmac_update(Ctx0, Header),
-    Ctx2 = crypto:hmac_update(Ctx1, ParentHeader),
-    Ctx3 = crypto:hmac_update(Ctx2, Metadata),
-    Ctx4 = crypto:hmac_update(Ctx3, Content),
+    Ctx0 = crypto:mac_init(hmac, SignatureScheme, Key),
+    Ctx1 = crypto:mac_update(Ctx0, Header),
+    Ctx2 = crypto:mac_update(Ctx1, ParentHeader),
+    Ctx3 = crypto:mac_update(Ctx2, Metadata),
+    Ctx4 = crypto:mac_update(Ctx3, Content),
 
-    Signature = jup_util:hexlify(crypto:hmac_final(Ctx4)),
+    Signature = jup_util:hexlify(crypto:mac_final(Ctx4)),
 
     case Signature of
-        HMAC -> ok;
+        HMAC1 when HMAC1 =:= HMAC -> ok;
         _ -> error(invalid_signature)
     end,
 
@@ -57,17 +57,17 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
 
 -spec encode(type(), key()) -> [binary()].
 encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
-    Ctx0 = crypto:hmac_init(SignatureScheme, Key),
+    Ctx0 = crypto:mac_init(hmac, SignatureScheme, Key),
     Header = jsx:encode(Msg#jup_msg.header),
-    Ctx1 = crypto:hmac_update(Ctx0, Header),
+    Ctx1 = crypto:mac_update(Ctx0, Header),
     ParentHeader = jsx:encode(Msg#jup_msg.parent_header),
-    Ctx2 = crypto:hmac_update(Ctx1, ParentHeader),
+    Ctx2 = crypto:mac_update(Ctx1, ParentHeader),
     Metadata = jsx:encode(Msg#jup_msg.metadata),
-    Ctx3 = crypto:hmac_update(Ctx2, Metadata),
+    Ctx3 = crypto:mac_update(Ctx2, Metadata),
     Content = jsx:encode(Msg#jup_msg.content),
-    Ctx4 = crypto:hmac_update(Ctx3, Content),
+    Ctx4 = crypto:mac_update(Ctx3, Content),
 
-    Signature = jup_util:hexlify(crypto:hmac_final(Ctx4)),
+    Signature = jup_util:hexlify(crypto:mac_final(Ctx4)),
 
     % TODO
     Msg#jup_msg.uuids ++ [
