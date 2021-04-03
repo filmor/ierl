@@ -10,6 +10,11 @@
 
 -include("internal.hrl").
 
+-ignore_xref([
+    start_link/2,
+    last_heartbeat/1
+]).
+
 -export([
     start_link/2,
     last_heartbeat/1

@@ -11,6 +11,10 @@
 
 -include("internal.hrl").
 
+-ignore_xref([
+    start_link/4
+]).
+
 -export([
     start_link/4,
     send/3

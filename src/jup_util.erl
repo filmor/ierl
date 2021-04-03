@@ -2,6 +2,11 @@
 
 -include("internal.hrl").
 
+-ignore_xref([
+    call_if_exported/3,
+    ensure_string/1
+]).
+
 -export([
     split_at_delim/2,
     ensure_binary/1,

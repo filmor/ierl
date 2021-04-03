@@ -2,6 +2,10 @@
 
 -include("internal.hrl").
 
+-ignore_xref([
+    start_kernel/4
+]).
+
 -export([
     start_kernel/4
 ]).

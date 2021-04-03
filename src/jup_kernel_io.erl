@@ -2,6 +2,12 @@
 
 -include("internal.hrl").
 
+-behaviour(gen_server).
+
+-ignore_xref([
+    start_link/1
+]).
+
 -export([
     start_link/1,
     get_pid/1

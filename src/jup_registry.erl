@@ -2,6 +2,13 @@
 
 -include("internal.hrl").
 
+-ignore_xref([
+    register_name/2,
+    unregister_name/1,
+    whereis_name/1,
+    send/2
+]).
+
 -export([
     register_name/2,
     unregister_name/1,

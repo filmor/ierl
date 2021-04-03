@@ -1,5 +1,10 @@
 -module(jup_display).
 
+-ignore_xref([
+    display/1,
+    update/2
+]).
+
 -export([
     to_map/1,
     display/1,
