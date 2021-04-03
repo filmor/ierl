@@ -1,16 +1,16 @@
 language: erlang
 
 otp_release:
-  - 21.3
-  - 22.0
+  - '22.3'
+  - '23.1'
 
-dist: trusty
+dist: xenial
 
 branches:
   only:
     - master
 
 script:
-  # Ignore xref results
-  - rebar3 xref || true
+  - rebar3 xref
   - rebar3 dialyzer
+  - rebar3 eunit
