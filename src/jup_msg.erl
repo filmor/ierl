@@ -1,11 +1,11 @@
 -module(jup_msg).
 
 -export([
-         decode/2,
-         encode/2,
-         msg_type/1,
-         add_headers/3
-        ]).
+    decode/2,
+    encode/2,
+    msg_type/1,
+    add_headers/3
+]).
 
 -include("internal.hrl").
 
@@ -16,12 +16,12 @@
 -type key() :: {crypto:hash_algorithms(), binary()}.
 
 -export_type(
-   [
-    key/0,
-    type/0,
-    msg_type/0
-   ]).
-
+    [
+        key/0,
+        type/0,
+        msg_type/0
+    ]
+).
 
 -spec decode([binary()], key()) -> type().
 decode(MultipartMsg, {SignatureScheme, Key}) ->
@@ -43,17 +43,16 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
     end,
 
     Res = #jup_msg{
-       uuids = Uuids,
-       header = jsx:decode(Header, [return_maps]),
-       parent_header = jsx:decode(ParentHeader, [return_maps]),
-       metadata = jsx:decode(Metadata, [return_maps]),
-       content = jsx:decode(Content, [return_maps]),
+        uuids = Uuids,
+        header = jsx:decode(Header, [return_maps]),
+        parent_header = jsx:decode(ParentHeader, [return_maps]),
+        metadata = jsx:decode(Metadata, [return_maps]),
+        content = jsx:decode(Content, [return_maps]),
 
-       extra_binaries = ExtraBinaries
-      },
+        extra_binaries = ExtraBinaries
+    },
 
-    Res#jup_msg{type=header_entry(Res, msg_type)}.
-
+    Res#jup_msg{type = header_entry(Res, msg_type)}.
 
 -spec encode(type(), key()) -> [binary()].
 encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
@@ -70,28 +69,26 @@ encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
     Signature = jup_util:hexlify(crypto:mac_final(Ctx4)),
 
     % TODO
-    Msg#jup_msg.uuids ++ [
-     ?DELIM,
-     Signature,
-     Header,
-     ParentHeader,
-     Metadata,
-     Content
-     | Msg#jup_msg.extra_binaries
-    ].
-
+    Msg#jup_msg.uuids ++
+        [
+            ?DELIM,
+            Signature,
+            Header,
+            ParentHeader,
+            Metadata,
+            Content
+            | Msg#jup_msg.extra_binaries
+        ].
 
 -spec header_entry(type(), atom()) -> binary().
 
-header_entry(#jup_msg{header=Header}, Key) ->
+header_entry(#jup_msg{header = Header}, Key) ->
     BinKey = jup_util:ensure_binary(Key),
     maps:get(BinKey, Header).
 
-
 -spec msg_type(type()) -> msg_type().
-msg_type(#jup_msg{type=Type}) ->
+msg_type(#jup_msg{type = Type}) ->
     Type.
-
 
 -spec add_headers(type(), type() | undefined, msg_type()) -> type().
 add_headers(Msg = #jup_msg{}, Parent, MessageType) ->
@@ -99,31 +96,31 @@ add_headers(Msg = #jup_msg{}, Parent, MessageType) ->
     MsgId = jup_util:get_uuid(),
 
     {Username, Session} =
-    case Parent of
-        undefined ->
-            {jup_util:get_user(), jup_util:get_uuid()};
-        _ ->
-            {header_entry(Parent, username), header_entry(Parent, session)}
-    end,
+        case Parent of
+            undefined ->
+                {jup_util:get_user(), jup_util:get_uuid()};
+            _ ->
+                {header_entry(Parent, username), header_entry(Parent, session)}
+        end,
 
     Header = #{
-      <<"date">> => iso8601:format(os:timestamp()),
-      <<"username">> => Username,
-      <<"session">> => Session,
-      <<"msg_type">> => MessageType1,
-      <<"msg_id">> => MsgId,
-      <<"version">> => ?JUP_PROTO_VERSION
-     },
+        <<"date">> => iso8601:format(os:timestamp()),
+        <<"username">> => Username,
+        <<"session">> => Session,
+        <<"msg_type">> => MessageType1,
+        <<"msg_id">> => MsgId,
+        <<"version">> => ?JUP_PROTO_VERSION
+    },
 
     Msg1 =
-    Msg#jup_msg{ header=Header, type=MessageType1 },
+        Msg#jup_msg{header = Header, type = MessageType1},
 
     case Parent of
         undefined ->
             Msg1;
         _ ->
             Msg1#jup_msg{
-              uuids=Parent#jup_msg.uuids,
-              parent_header=Parent#jup_msg.header
-             }
+                uuids = Parent#jup_msg.uuids,
+                parent_header = Parent#jup_msg.header
+            }
     end.

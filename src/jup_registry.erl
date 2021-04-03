@@ -3,11 +3,11 @@
 -include("internal.hrl").
 
 -export([
-         register_name/2,
-         unregister_name/1,
-         whereis_name/1,
-         send/2
-        ]).
+    register_name/2,
+    unregister_name/1,
+    whereis_name/1,
+    send/2
+]).
 
 to_atom(InnerName) ->
     Formatted = io_lib:print(InnerName),
@@ -30,4 +30,3 @@ whereis_name({Name, SubName}) ->
 send({Name, SubName}, Msg) ->
     GprocName = ?JUP_NAME(Name, SubName),
     gproc:send(GprocName, Msg).
-

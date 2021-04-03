@@ -23,106 +23,95 @@
 
 % Implement Silent, History, AllowStdin in here
 
-
 -record(state, {
-          name :: jupyter:name(),
-          node :: node(),
-          worker_pid :: pid()
-         }).
+    name :: jupyter:name(),
+    node :: node(),
+    worker_pid :: pid()
+}).
 
 -define(NAME(Name), ?JUP_VIA(Name, backend)).
-
 
 -spec start_link(jupyter:name(), node(), module(), map()) -> {ok, pid()}.
 start_link(Name, Node, Backend, BackendArgs) ->
     {module, _} = code:ensure_loaded(Backend),
     gen_server:start_link(
-      ?NAME(Name), ?MODULE, [Name, Node, Backend, BackendArgs], []
-     ).
+        ?NAME(Name),
+        ?MODULE,
+        [Name, Node, Backend, BackendArgs],
+        []
+    ).
 
 -spec push(jupyter:name(), control | shell, jup_msg:type()) -> ok.
 push(Name, Queue, Msg) ->
     gen_server:cast(?NAME(Name), {push, Queue, Msg}).
 
-
 -spec status(pid(), atom(), jup_msg:type()) -> ok.
 status(Executor, Status, Parent) ->
-    iopub(Executor, status, #{ execution_state => Status }, Parent).
+    iopub(Executor, status, #{execution_state => Status}, Parent).
 
-
--spec iopub(pid(), jup_msg:msg_type(), jup_msg:type() | map(), jup_msg:type()) ->
-    ok.
+-spec iopub(pid(), jup_msg:msg_type(), jup_msg:type() | map(), jup_msg:type()) -> ok.
 iopub(Executor, MsgType, Msg, Parent) ->
     ?LOG_DEBUG("Publishing IO ~p:~n~p", [MsgType, Msg]),
-    Msg1 = jup_msg:add_headers(#jup_msg{content=Msg}, Parent, MsgType),
+    Msg1 = jup_msg:add_headers(#jup_msg{content = Msg}, Parent, MsgType),
     gen_server:call(Executor, {iopub, Msg1}, 30 * 1000).
 
-
--spec reply(pid(), term(), atom(), jup_msg:type() | map(), jup_msg:type()) ->
-    ok.
+-spec reply(pid(), term(), atom(), jup_msg:type() | map(), jup_msg:type()) -> ok.
 reply(Executor, Port, Status, NewMsg, Msg) ->
     ?LOG_DEBUG(
         "Replying to ~p with status ~p and content ~p",
         [Port, Status, NewMsg]
     ),
 
-    NewMsg1 = case NewMsg of
-                  Map when is_map(Map) ->
-                      #jup_msg{content=Map};
-                  _ ->
-                      NewMsg
-              end,
+    NewMsg1 =
+        case NewMsg of
+            Map when is_map(Map) ->
+                #jup_msg{content = Map};
+            _ ->
+                NewMsg
+        end,
 
-    NewMsg2 = #jup_msg{content=(NewMsg1#jup_msg.content)#{ status => Status }},
+    NewMsg2 = #jup_msg{content = (NewMsg1#jup_msg.content)#{status => Status}},
 
     Reply = jup_msg:add_headers(
-              NewMsg2, Msg,
-              to_reply_type(jup_msg:msg_type(Msg))
-             ),
+        NewMsg2,
+        Msg,
+        to_reply_type(jup_msg:msg_type(Msg))
+    ),
 
     gen_server:cast(Executor, {reply, Port, Reply}).
-
 
 -spec stop(pid()) -> ok.
 stop(Pid) ->
     gen_server:cast(Pid, {stop, no_restart}).
 
-
 init([Name, Node, Backend, BackendArgs]) ->
     ?LOG_DEBUG("Started executor at ~p", [self()]),
     {ok, WorkerPid} =
-    jup_kernel_worker:start_link(Name, Node, Backend, BackendArgs),
+        jup_kernel_worker:start_link(Name, Node, Backend, BackendArgs),
 
-    {ok, #state{name=Name, worker_pid=WorkerPid}}.
-
+    {ok, #state{name = Name, worker_pid = WorkerPid}}.
 
 handle_info(_Msg, State) ->
     {noreply, State}.
 
-
 handle_cast({push, Port, Msg}, State) ->
     jup_kernel_worker:push(State#state.worker_pid, Port, Msg),
     {noreply, State};
-
-
 handle_cast({reply, Port, Msg}, State) ->
     jup_kernel_socket:send(State#state.name, Port, Msg),
     {noreply, State};
-
 handle_cast({stop, _Restart}, State) ->
     spawn(
-      fun () ->
-          jup_kernel_sup:stop(State#state.name),
-          init:stop(0)
-      end
-     ),
+        fun() ->
+            jup_kernel_sup:stop(State#state.name),
+            init:stop(0)
+        end
+    ),
     {noreply, State}.
-
 
 handle_call({iopub, Msg}, _From, State) ->
     jup_kernel_iopub_srv:send(State#state.name, Msg),
     {reply, ok, State}.
-
 
 -spec to_reply_type(binary()) -> binary().
 to_reply_type(MsgType) ->
