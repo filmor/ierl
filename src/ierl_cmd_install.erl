@@ -1,5 +1,7 @@
 -module(ierl_cmd_install).
 
+-behaviour(ierl_cmd).
+
 -export([
          exec/4,
          opt_spec/0

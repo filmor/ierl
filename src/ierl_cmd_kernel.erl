@@ -1,5 +1,7 @@
 -module(ierl_cmd_kernel).
 
+-behaviour(ierl_cmd).
+
 -include_lib("kernel/include/logger.hrl").
 
 -define(LOG_LEVEL, error).

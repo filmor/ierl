@@ -1,6 +1,7 @@
 -module(ierl).
 
 -export([main/1]).
+-ignore_xref([main/1]).
 
 
 -spec backends() -> map().
