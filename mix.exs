@@ -33,7 +33,7 @@ defmodule IErl.MixProject do
   defp get_app_src do
     {:ok,
       [{:application, :ierl, args}]
-    } = :file.consult "src/ierl.app.src"
+    } = :file.consult "apps/ierl/src/ierl.app.src"
 
     args
   end
