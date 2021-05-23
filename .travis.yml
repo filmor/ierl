@@ -42,4 +42,5 @@ script:
   # Ignore xref results
   - './rebar3 xref || true'
   - ./rebar3 dialyzer
+  - ./rebar3 eunit
   - ./test.sh
