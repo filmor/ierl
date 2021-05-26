@@ -9,7 +9,7 @@ defmodule IErl.MixProject do
       apps_path: "apps",
       # apps: [:ierl, :jupyter],
       elixir: "~> 1.10",
-      erlc_options: config[:erl_opts],
+      erlc_options: config[:erl_opts]
     ]
   end
 end

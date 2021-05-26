@@ -26,11 +26,71 @@
 -export([mkdtemp/0, mkdtemp/3]).
 -export([rmtempdir/1]).
 %% -export([mkstemp/4]).
--define(SAFE_CHARS, {$a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m,
-                     $n, $o, $p, $q, $r, $s, $t, $u, $v, $w, $x, $y, $z,
-                     $A, $B, $C, $D, $E, $F, $G, $H, $I, $J, $K, $L, $M,
-                     $N, $O, $P, $Q, $R, $S, $T, $U, $V, $W, $X, $Y, $Z,
-                     $0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $_}).
+-define(SAFE_CHARS, {
+    $a,
+    $b,
+    $c,
+    $d,
+    $e,
+    $f,
+    $g,
+    $h,
+    $i,
+    $j,
+    $k,
+    $l,
+    $m,
+    $n,
+    $o,
+    $p,
+    $q,
+    $r,
+    $s,
+    $t,
+    $u,
+    $v,
+    $w,
+    $x,
+    $y,
+    $z,
+    $A,
+    $B,
+    $C,
+    $D,
+    $E,
+    $F,
+    $G,
+    $H,
+    $I,
+    $J,
+    $K,
+    $L,
+    $M,
+    $N,
+    $O,
+    $P,
+    $Q,
+    $R,
+    $S,
+    $T,
+    $U,
+    $V,
+    $W,
+    $X,
+    $Y,
+    $Z,
+    $0,
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $_
+}).
 -define(TMP_MAX, 10000).
 
 -include_lib("kernel/include/file.hrl").
@@ -73,13 +133,13 @@ mkdtemp() ->
 mkdtemp(Suffix, Prefix, Dir) ->
     mkdtemp_n(rngpath_fun(Suffix, Prefix, Dir), ?TMP_MAX).
 
-
-
 mkdtemp_n(RngPath, 1) ->
     make_dir(RngPath());
 mkdtemp_n(RngPath, N) ->
-    try make_dir(RngPath())
-    catch throw:{error, eexist} ->
+    try
+        make_dir(RngPath())
+    catch
+        throw:{error, eexist} ->
             mkdtemp_n(RngPath, N - 1)
     end.
 
@@ -87,16 +147,16 @@ make_dir(Path) ->
     case file:make_dir(Path) of
         ok ->
             ok;
-        E={error, eexist} ->
+        E = {error, eexist} ->
             throw(E)
     end,
     %% Small window for a race condition here because dir is created 777
-    ok = file:write_file_info(Path, #file_info{mode=8#0700}),
+    ok = file:write_file_info(Path, #file_info{mode = 8#0700}),
     Path.
 
 rngpath_fun(Prefix, Suffix, Dir) ->
-    fun () ->
-            filename:join([Dir, Prefix ++ rngchars(6) ++ Suffix])
+    fun() ->
+        filename:join([Dir, Prefix ++ rngchars(6) ++ Suffix])
     end.
 
 rngchars(0) ->
@@ -117,9 +177,11 @@ gettempdir() ->
     gettempdir(gettempdir_checks(), fun normalize_dir/1).
 
 gettempdir_checks() ->
-    [{fun os:getenv/1, ["TMPDIR", "TMP", "TEMP"]},
-     {fun gettempdir_identity/1, ["/tmp", "/var/tmp", "/usr/tmp"]},
-     {fun gettempdir_cwd/1, [cwd]}].
+    [
+        {fun os:getenv/1, ["TMPDIR", "TMP", "TEMP"]},
+        {fun gettempdir_identity/1, ["/tmp", "/var/tmp", "/usr/tmp"]},
+        {fun gettempdir_cwd/1, [cwd]}
+    ].
 
 gettempdir_identity(L) ->
     L.
@@ -159,60 +221,78 @@ normalize_dir(L) ->
 pushenv(L) ->
     [{K, os:getenv(K)} || K <- L].
 popenv(L) ->
-    F = fun ({K, false}) ->
-                %% Erlang doesn't have an unsetenv, wtf.
-                os:putenv(K, "");
-            ({K, V}) ->
-                os:putenv(K, V)
-        end,
+    F = fun
+        ({K, false}) ->
+            %% Erlang doesn't have an unsetenv, wtf.
+            os:putenv(K, "");
+        ({K, V}) ->
+            os:putenv(K, V)
+    end,
     lists:foreach(F, L).
 
 gettempdir_fallback_test() ->
     ?assertEqual(
-       "/",
-       gettempdir([{fun gettempdir_identity/1, ["/--not-here--/"]},
-                   {fun gettempdir_identity/1, ["/"]}],
-                  fun normalize_dir/1)),
+        "/",
+        gettempdir(
+            [
+                {fun gettempdir_identity/1, ["/--not-here--/"]},
+                {fun gettempdir_identity/1, ["/"]}
+            ],
+            fun normalize_dir/1
+        )
+    ),
     ?assertEqual(
-       "/",
-       %% simulate a true os:getenv unset env
-       gettempdir([{fun gettempdir_identity/1, [false]},
-                   {fun gettempdir_identity/1, ["/"]}],
-                  fun normalize_dir/1)),
+        "/",
+        %% simulate a true os:getenv unset env
+        gettempdir(
+            [
+                {fun gettempdir_identity/1, [false]},
+                {fun gettempdir_identity/1, ["/"]}
+            ],
+            fun normalize_dir/1
+        )
+    ),
     ok.
 
 gettempdir_identity_test() ->
     ?assertEqual(
-       "/",
-       gettempdir([{fun gettempdir_identity/1, ["/"]}], fun normalize_dir/1)),
+        "/",
+        gettempdir([{fun gettempdir_identity/1, ["/"]}], fun normalize_dir/1)
+    ),
     ok.
 
 gettempdir_cwd_test() ->
     {ok, Cwd} = file:get_cwd(),
     ?assertEqual(
-       normalize_dir(Cwd),
-       gettempdir([{fun gettempdir_cwd/1, [cwd]}], fun normalize_dir/1)),
+        normalize_dir(Cwd),
+        gettempdir([{fun gettempdir_cwd/1, [cwd]}], fun normalize_dir/1)
+    ),
     ok.
 
 rngchars_test() ->
     ?assertEqual(
-       "",
-       rngchars(0)),
+        "",
+        rngchars(0)
+    ),
     ?assertEqual(
-       10,
-       length(rngchars(10))),
+        10,
+        length(rngchars(10))
+    ),
     ok.
 
 rngchar_test() ->
     ?assertEqual(
-       $a,
-       rngchar(0)),
+        $a,
+        rngchar(0)
+    ),
     ?assertEqual(
-       $A,
-       rngchar(26)),
+        $A,
+        rngchar(26)
+    ),
     ?assertEqual(
-       $_,
-       rngchar(62)),
+        $_,
+        rngchar(62)
+    ),
     ok.
 
 mkdtemp_n_failonce_test() ->
@@ -220,84 +300,99 @@ mkdtemp_n_failonce_test() ->
     Path = filename:join([D, "testdir"]),
     %% Toggle the existence of a dir so that it fails
     %% the first time and succeeds the second.
-    F = fun () ->
-                case filelib:is_dir(Path) of
-                    true ->
-                        file:del_dir(Path);
-                    false ->
-                        file:make_dir(Path)
-                end,
-                Path
+    F = fun() ->
+        case filelib:is_dir(Path) of
+            true ->
+                file:del_dir(Path);
+            false ->
+                file:make_dir(Path)
         end,
+        Path
+    end,
     try
         %% Fails the first time
         ?assertThrow(
-           {error, eexist},
-           mkdtemp_n(F, 1)),
+            {error, eexist},
+            mkdtemp_n(F, 1)
+        ),
         %% Reset state
         file:del_dir(Path),
         %% Succeeds the second time
         ?assertEqual(
-           Path,
-           mkdtemp_n(F, 2))
-    after rmtempdir(D)
+            Path,
+            mkdtemp_n(F, 2)
+        )
+    after
+        rmtempdir(D)
     end,
     ok.
 
 mkdtemp_n_fail_test() ->
     {ok, Cwd} = file:get_cwd(),
     ?assertThrow(
-       {error, eexist},
-       mkdtemp_n(fun () -> Cwd end, 1)),
+        {error, eexist},
+        mkdtemp_n(fun() -> Cwd end, 1)
+    ),
     ?assertThrow(
-       {error, eexist},
-       mkdtemp_n(fun () -> Cwd end, 2)),
+        {error, eexist},
+        mkdtemp_n(fun() -> Cwd end, 2)
+    ),
     ok.
 
 make_dir_fail_test() ->
     {ok, Cwd} = file:get_cwd(),
     ?assertThrow(
-      {error, eexist},
-      make_dir(Cwd)),
+        {error, eexist},
+        make_dir(Cwd)
+    ),
     ok.
 
 mkdtemp_test() ->
     D = mkdtemp(),
     ?assertEqual(
-       true,
-       filelib:is_dir(D)),
+        true,
+        filelib:is_dir(D)
+    ),
     ?assertEqual(
-       ok,
-       file:del_dir(D)),
+        ok,
+        file:del_dir(D)
+    ),
     ok.
 
 rmtempdir_test() ->
     D1 = mkdtemp(),
     ?assertEqual(
-       true,
-       filelib:is_dir(D1)),
+        true,
+        filelib:is_dir(D1)
+    ),
     ?assertEqual(
-       ok,
-       rmtempdir(D1)),
+        ok,
+        rmtempdir(D1)
+    ),
     D2 = mkdtemp(),
     ?assertEqual(
-       true,
-       filelib:is_dir(D2)),
+        true,
+        filelib:is_dir(D2)
+    ),
     ok = file:write_file(filename:join([D2, "foo"]), <<"bytes">>),
     D3 = mkdtemp("suffix", "prefix", D2),
     ?assertEqual(
-       true,
-       filelib:is_dir(D3)),
+        true,
+        filelib:is_dir(D3)
+    ),
     ok = file:write_file(filename:join([D3, "foo"]), <<"bytes">>),
     ?assertEqual(
-       ok,
-       rmtempdir(D2)),
+        ok,
+        rmtempdir(D2)
+    ),
     ?assertEqual(
-       {error, enoent},
-       file:consult(D3)),
+        {error, enoent},
+        file:consult(D3)
+    ),
     ?assertEqual(
-       {error, enoent},
-       file:consult(D2)),
+        {error, enoent},
+        file:consult(D2)
+    ),
     ok.
 
 gettempdir_env_test() ->
@@ -307,18 +402,22 @@ gettempdir_env_test() ->
         popenv(FalseEnv),
         popenv([{"TMPDIR", "/"}]),
         ?assertEqual(
-           "/",
-           os:getenv("TMPDIR")),
+            "/",
+            os:getenv("TMPDIR")
+        ),
         ?assertEqual(
-           "/",
-           gettempdir()),
+            "/",
+            gettempdir()
+        ),
         {ok, Cwd} = file:get_cwd(),
         popenv(FalseEnv),
         popenv([{"TMP", Cwd}]),
         ?assertEqual(
-           normalize_dir(Cwd),
-           gettempdir())
-    after popenv(Env)
+            normalize_dir(Cwd),
+            gettempdir()
+        )
+    after
+        popenv(Env)
     end,
     ok.
 

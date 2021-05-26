@@ -3,15 +3,13 @@
 -export([main/1]).
 -ignore_xref([main/1]).
 
-
 -spec backends() -> map().
 backends() ->
     #{
-       erlang => ierl_backend_erlang,
-       elixir => ierl_backend_elixir,
-       lfe => ierl_backend_lfe
+        erlang => ierl_backend_erlang,
+        elixir => ierl_backend_elixir,
+        lfe => ierl_backend_lfe
     }.
-
 
 -spec commands() -> map().
 commands() ->
@@ -21,7 +19,6 @@ commands() ->
         % Execute a kernel using a connection file
         kernel => ierl_cmd_kernel
     }.
-
 
 -spec get_opts(Mod :: module()) -> {string(), [getopt:option_spec()]}.
 get_opts(Mod) ->
@@ -39,27 +36,25 @@ get_opts(Mod) ->
             {"", []}
     end.
 
-
 do_list(Header, Map) ->
     io:format("~s:~n~n", [Header]),
     Lines = lists:sort(
-              maps:fold(
-                fun (K, V, Res) ->
-                        [{atom_to_list(K), element(1, get_opts(V))} | Res]
-                end,
-                [],
-                Map
-               )
-             ),
+        maps:fold(
+            fun(K, V, Res) ->
+                [{atom_to_list(K), element(1, get_opts(V))} | Res]
+            end,
+            [],
+            Map
+        )
+    ),
 
     lists:foreach(
-      fun ({Name, Usage}) ->
-              io:format(" ~-30s ~s~n", [Name, Usage])
-      end,
-      Lines
-     ),
+        fun({Name, Usage}) ->
+            io:format(" ~-30s ~s~n", [Name, Usage])
+        end,
+        Lines
+    ),
     io:format("~n").
-
 
 -spec list_commands() -> ok.
 list_commands() ->
@@ -69,33 +64,29 @@ list_commands() ->
 list_backends() ->
     do_list("Available backends", backends()).
 
-
 -spec main([binary() | string()]) -> term().
 main(Args) ->
     real_main(
-      [
-       if
-           is_binary(X) -> binary_to_list(X);
-           true -> X
-       end
-       || X <- Args
-      ]
-     ).
+        [
+            if
+                is_binary(X) -> binary_to_list(X);
+                true -> X
+            end
+         || X <- Args
+        ]
+    ).
 
 -spec real_main([string()]) -> term().
 real_main([]) ->
     % Print usage
     real_main(["help"]);
-
 real_main(["--help"]) ->
     real_main(["help"]);
-
 real_main(["help"]) ->
     Cmd = filename:basename(escript:script_name()),
     io:format("Usage: ~s <cmd> <backend>~n~n", [Cmd]),
     list_commands(),
     list_backends();
-
 real_main([Command | Rest]) ->
     CmdAtom = list_to_atom(Command),
     case maps:find(CmdAtom, commands()) of
@@ -105,18 +96,17 @@ real_main([Command | Rest]) ->
             main(["help"])
     end.
 
-
 main(Command, []) ->
     main(Command, ["erlang"]);
-
 main(Command, [Backend | Rest]) ->
-    {BAtom, Rest1} = case Backend of
-                         [$-|_] ->
-                             % Fall back to "erlang" as the default backend
-                             {erlang, [Backend | Rest]};
-                         _ ->
-                             {list_to_atom(Backend), Rest}
-                     end,
+    {BAtom, Rest1} =
+        case Backend of
+            [$- | _] ->
+                % Fall back to "erlang" as the default backend
+                {erlang, [Backend | Rest]};
+            _ ->
+                {list_to_atom(Backend), Rest}
+        end,
 
     case maps:find(BAtom, backends()) of
         {ok, Module} ->
@@ -124,7 +114,6 @@ main(Command, [Backend | Rest]) ->
         _ ->
             main(["help"])
     end.
-
 
 main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
     {module, Command} = code:ensure_loaded(Command),
@@ -135,7 +124,7 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
 
     % TODO: Ensure that BSpec doesn't override any options from Spec
 
-    Spec1 = [{help, $h, "help", boolean, "This help text"}|Spec],
+    Spec1 = [{help, $h, "help", boolean, "This help text"} | Spec],
 
     Spec2 = Spec1 ++ BSpec,
 
@@ -147,27 +136,26 @@ main({CmdAtom, Command}, {BAtom, Backend}, Rest) ->
     case proplists:get_value(help, ParsedArgs) of
         true ->
             getopt:usage(
-              Spec2,
-              lists:flatten(io_lib:format("ierl ~s ~s", [CmdAtom, BAtom]))
-             );
+                Spec2,
+                lists:flatten(io_lib:format("ierl ~s ~s", [CmdAtom, BAtom]))
+            );
         _ ->
             Command:exec({BAtom, Backend}, Args, BackendArgs, BSpec)
     end.
 
-
 -spec args_to_map([{atom(), any()}], [getopt:option_spec()]) -> map().
 args_to_map(ParsedArgs, Spec) ->
     lists:foldl(
-      fun (Option, Res) ->
-              Name = element(1, Option),
+        fun(Option, Res) ->
+            Name = element(1, Option),
 
-              case proplists:get_value(Name, ParsedArgs) of
-                  undefined ->
-                      Res;
-                  Value ->
-                      Res#{ Name => Value }
-              end
-      end,
-      #{},
-      Spec
-     ).
+            case proplists:get_value(Name, ParsedArgs) of
+                undefined ->
+                    Res;
+                Value ->
+                    Res#{Name => Value}
+            end
+        end,
+        #{},
+        Spec
+    ).

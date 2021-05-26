@@ -1,15 +1,13 @@
 -module(ierl_versions).
 
 -export([
-         get_otp_version/0,
-         get_app_version/1
-        ]).
+    get_otp_version/0,
+    get_app_version/1
+]).
 
 -dialyzer({nowarn_function, trim/1}).
 
-
 -type version() :: binary() | not_found.
-
 
 -spec get_app_version(atom()) -> version().
 get_app_version(Name) ->
@@ -20,16 +18,18 @@ get_app_version(Name) ->
             not_found
     end.
 
-
 -spec get_otp_version() -> version().
 get_otp_version() ->
     Res = file:read_file(
-            filename:join(
-              [code:root_dir(), "releases", erlang:system_info(otp_release),
-               "OTP_VERSION"
-              ]
-             )
-           ),
+        filename:join(
+            [
+                code:root_dir(),
+                "releases",
+                erlang:system_info(otp_release),
+                "OTP_VERSION"
+            ]
+        )
+    ),
 
     case Res of
         {ok, Version} ->
@@ -37,7 +37,6 @@ get_otp_version() ->
         _ ->
             not_found
     end.
-
 
 -spec trim(binary()) -> binary().
 trim(V) ->

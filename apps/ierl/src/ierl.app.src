@@ -1,10 +1,11 @@
-{application,ierl,
-             [{description,"Erlang jupyter frontend tool to install and run kernels"},
-              {vsn,"0.4.0"},
-              {registered,[]},
-              {applications,[kernel,stdlib,jupyter,getopt,lfe]},
-              {included_applications,[]},
-              {env,[]},
-              {licenses,["GPLv3"]},
-              {links,[{"Github","https://github.com/filmor/ierl"}]},
-              {include_files,["mix.exs"]}]}.
+{application, ierl, [
+    {description, "Erlang jupyter frontend tool to install and run kernels"},
+    {vsn, "0.4.0"},
+    {registered, []},
+    {applications, [kernel, stdlib, jupyter, getopt, lfe]},
+    {included_applications, []},
+    {env, []},
+    {licenses, ["GPLv3"]},
+    {links, [{"Github", "https://github.com/filmor/ierl"}]},
+    {include_files, ["mix.exs"]}
+]}.

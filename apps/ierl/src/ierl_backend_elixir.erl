@@ -2,42 +2,37 @@
 
 -behaviour(jup_kernel_backend).
 
-
 -export([
-         init/1,
+    init/1,
 
-         deps/0,
-         opt_spec/0,
-         language/0,
+    deps/0,
+    opt_spec/0,
+    language/0,
 
-         kernel_info/2,
-         execute/3,
-         exec_counter/1,
-         is_complete/3,
-         complete/4,
-         inspect/5
-        ]).
-
+    kernel_info/2,
+    execute/3,
+    exec_counter/1,
+    is_complete/3,
+    complete/4,
+    inspect/5
+]).
 
 -record(state, {
-          bindings = [],
-          modules,
-          counter = 0
-         }).
-
+    bindings = [],
+    modules,
+    counter = 0
+}).
 
 opt_spec() ->
     {
-     "Simple Elixir backend",
-     [
-      {path, undefined, "elixir-path", string, "Elixir install root directory"}
-     ]
+        "Simple Elixir backend",
+        [
+            {path, undefined, "elixir-path", string, "Elixir install root directory"}
+        ]
     }.
-
 
 language() ->
     elixir.
-
 
 init(Args) ->
     case code:ensure_loaded(elixir) of
@@ -62,27 +57,24 @@ init(Args) ->
 
     #state{}.
 
-
 deps() ->
     [ierl_versions, ierl_util].
 
-
 kernel_info(_Msg, _State) ->
     Content =
-    #{
-      implementation => ?MODULE,
-      implementation_version => ierl_versions:get_app_version(ierl),
-      banner => <<"Elixir Jupyter Kernel">>,
-      language_info => #{
-        name => elixir,
-        version => ierl_versions:get_app_version(elixir),
-        file_extension => <<".ex">>,
-        codemirror_mode => ruby
-       }
-     },
+        #{
+            implementation => ?MODULE,
+            implementation_version => ierl_versions:get_app_version(ierl),
+            banner => <<"Elixir Jupyter Kernel">>,
+            language_info => #{
+                name => elixir,
+                version => ierl_versions:get_app_version(elixir),
+                file_extension => <<".ex">>,
+                codemirror_mode => ruby
+            }
+        },
 
     Content.
-
 
 execute(Code, _Msg, State) ->
     Counter = State#state.counter,
@@ -94,8 +86,9 @@ execute(Code, _Msg, State) ->
         Counter1 = Counter + 1,
 
         {
-         {ok, Res1}, Counter1,
-         State#state{bindings=NewBindings, counter=Counter1}
+            {ok, Res1},
+            Counter1,
+            State#state{bindings = NewBindings, counter = Counter1}
         }
     catch
         Type:Error ->
@@ -114,12 +107,11 @@ is_complete(Code, _Msg, _State) ->
         'Elixir.Code':'string_to_quoted!'(Code),
         complete
     catch
-        error:#{ '__struct__' := 'Elixir.TokenMissingError'} ->
+        error:#{'__struct__' := 'Elixir.TokenMissingError'} ->
             incomplete;
         error:_Other ->
             invalid
     end.
-
 
 complete(Code, CursorPos, _Msg, _State) ->
     % TODO: Match in the environment
@@ -130,33 +122,29 @@ complete(Code, CursorPos, _Msg, _State) ->
             [Expansion];
         {yes, [], Matches} ->
             {Start, End} = ierl_util:find_span(Code1, CursorPos),
-            {Start, End,
-             [
-              Name ||
-              {Name, _Arity} <- lists:map(fun split_arity/1, Matches)
-             ]
-            };
+            {Start, End, [
+                Name
+             || {Name, _Arity} <- lists:map(fun split_arity/1, Matches)
+            ]};
         {no, [], _} ->
             []
     end.
 
-
 inspect(_Code, _CursorPos, _Detail, _Msg, _State) ->
     not_found.
 
-
 split_arity(Str) ->
-    {Name, ArityPart} = lists:splitwith(fun (X) -> X =/= $/ end, Str),
+    {Name, ArityPart} = lists:splitwith(fun(X) -> X =/= $/ end, Str),
 
-    Arity = case ArityPart of
-                [$/ | Rest] ->
-                    list_to_integer(Rest);
-                _ ->
-                    undefined
-            end,
+    Arity =
+        case ArityPart of
+            [$/ | Rest] ->
+                list_to_integer(Rest);
+            _ ->
+                undefined
+        end,
 
     {Name, Arity}.
-
 
 get_elixir_path(Args) ->
     case maps:find(path, Args) of
