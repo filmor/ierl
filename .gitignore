@@ -14,6 +14,5 @@ _checkouts*/
 __pycache__/
 
 deps/
-ierl
 mix.lock
 .*.sw[po]

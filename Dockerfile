@@ -25,8 +25,8 @@ RUN git clone ierl_repo ierl && \
     mix deps.get && \
 # Build lfe explicitly for now
     (cd deps/lfe && ~/.mix/rebar3 compile) && \
-    env MIX_ENV=prod mix escript.build && \
-    cp ierl /home/$NB_USER/.ierl/ierl.escript && \
+    (cd apps/ierl && env MIX_ENV=prod mix escript.build) && \
+    cp apps/ierl/ierl /home/$NB_USER/.ierl/ierl.escript && \
     chmod +x /home/$NB_USER/.ierl/ierl.escript && \
     /home/$NB_USER/.ierl/ierl.escript install erlang --user && \
     /home/$NB_USER/.ierl/ierl.escript install lfe --user && \
