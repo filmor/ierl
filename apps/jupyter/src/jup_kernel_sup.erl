@@ -46,7 +46,6 @@ stop(Name) ->
     end.
 
 -spec init([term()]) -> {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
-
 init([Name, ConnData, Backend, Args]) ->
     Socket = fun(PortName, Port) ->
         A = [Name, PortName, Port, ConnData],

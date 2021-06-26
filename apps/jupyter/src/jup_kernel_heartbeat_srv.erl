@@ -24,9 +24,7 @@
     init/1,
     handle_info/2,
     handle_call/3,
-    handle_cast/2,
-    terminate/2,
-    code_change/3
+    handle_cast/2
 ]).
 
 -record(state, {
@@ -73,12 +71,6 @@ handle_call(last_heartbeat, _From, State) ->
 
 handle_cast(_Msg, _State) ->
     error({invalid_cast, _Msg}).
-
-code_change(_OldVsn, State, _Extra) ->
-    State.
-
-terminate(_Reason, _State) ->
-    ok.
 
 -spec do_receive(pid(), reference(), pid()) -> no_return().
 do_receive(Pid, Ref, Socket) ->

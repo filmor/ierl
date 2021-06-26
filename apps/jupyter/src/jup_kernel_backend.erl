@@ -43,8 +43,6 @@
     state()
 ) -> {ok, jup_display:type()} | not_found.
 
--optional_callbacks(
-    [
-        opt_spec/0
-    ]
-).
+-optional_callbacks([
+    opt_spec/0
+]).

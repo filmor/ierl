@@ -14,8 +14,7 @@
     handle_call/3,
     handle_info/2,
     handle_cast/2,
-    terminate/2,
-    code_change/3
+    terminate/2
 ]).
 
 -record(state, {
@@ -129,9 +128,6 @@ handle_call(Call, _From, _State) ->
 
 terminate(_Reason, State) ->
     exit(State#state.exec_pid, kill).
-
-code_change(_OldVsn, State, _Extra) ->
-    State.
 
 -spec register_msg_to_io(jup_msg:type()) -> ok.
 register_msg_to_io(Msg) ->

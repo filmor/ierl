@@ -17,9 +17,7 @@
     init/1,
     handle_info/2,
     handle_call/3,
-    handle_cast/2,
-    terminate/2,
-    code_change/3
+    handle_cast/2
 ]).
 
 -record(state, {
@@ -71,12 +69,6 @@ handle_cast(_Cast, _State) ->
 
 handle_call(_Call, _From, _State) ->
     error({invalid_call, _Call}).
-
-terminate(_Reason, _State) ->
-    ok.
-
-code_change(_OldVsn, State, _Extra) ->
-    State.
 
 request({put_chars, Encoding, Chars}, State) ->
     Res = put_chars(

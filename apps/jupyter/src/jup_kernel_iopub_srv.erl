@@ -17,9 +17,7 @@
     init/1,
     handle_info/2,
     handle_call/3,
-    handle_cast/2,
-    terminate/2,
-    code_change/3
+    handle_cast/2
 ]).
 
 -record(state, {
@@ -80,12 +78,6 @@ handle_call(#jup_msg{} = Msg, _From, State) ->
 -spec handle_cast(_, state()) -> no_return().
 handle_cast(_Msg, _State) ->
     error({invalid_cast, _Msg}).
-
-code_change(_OldVsn, State, _Extra) ->
-    State.
-
-terminate(_Reason, _State) ->
-    ok.
 
 -spec do_send(jup_msg:type(), state()) -> ok.
 do_send(Msg, State) ->

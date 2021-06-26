@@ -24,9 +24,7 @@
     init/1,
     handle_info/2,
     handle_call/3,
-    handle_cast/2,
-    terminate/2,
-    code_change/3
+    handle_cast/2
 ]).
 
 -record(state, {
@@ -97,14 +95,7 @@ handle_call({send, Msg = #jup_msg{}}, _From, State) ->
     chumak:send_multipart(State#state.socket, Encoded),
     {reply, ok, State}.
 
-code_change(_OldVsn, State, _Extra) ->
-    State.
-
-terminate(_Reason, _State) ->
-    ok.
-
 -spec do_receive_multipart({jupyter:name(), atom()}, pid(), jup_msg:key()) -> no_return().
-
 do_receive_multipart({Name, PortName}, Socket, SignatureKey) ->
     {ok, Mp} = chumak:recv_multipart(Socket),
 
