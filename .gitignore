@@ -9,7 +9,6 @@ tmp/
 rebar3
 .cache/
 .pytest_cache/
-rebar.lock
 _checkouts*/
 __pycache__/
 
