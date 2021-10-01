@@ -4,6 +4,7 @@
 
 -export([
     init/1,
+    language/0,
     deps/0,
     opt_spec/0,
 
@@ -27,6 +28,9 @@ opt_spec() ->
         "Simple Erlang backend",
         []
     }.
+
+language() ->
+    <<"erlang">>.
 
 init(_Args) ->
     #state{

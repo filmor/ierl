@@ -64,12 +64,7 @@ create(Options) ->
     Spec = #{
         argv => Argv1,
         display_name => jup_util:ensure_binary(DisplayName),
-        language => jup_util:call_if_exported(
-            BackendModule,
-            language,
-            [],
-            erlang
-        ),
+        language => BackendModule:language(),
         interrupt_mode => <<"message">>,
         env => Env
     },

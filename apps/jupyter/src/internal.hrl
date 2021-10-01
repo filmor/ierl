@@ -2,7 +2,7 @@
 -define(JUPYTER_INTERNAL_HRL, 1).
 
 -include_lib("kernel/include/logger.hrl").
--include("records.hrl").
+-include("../include/records.hrl").
 
 -record(jup_msg, {
     uuids = [] :: [binary()],

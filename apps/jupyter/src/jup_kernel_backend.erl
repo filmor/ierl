@@ -17,6 +17,8 @@
     }.
 
 -callback init(Args :: map()) -> state().
+-callback language() -> binary().
+-callback deps() -> [module()].
 -callback opt_spec() -> {Desc :: iodata(), [getopt:option_spec()]}.
 
 -callback execute(Code :: binary(), jup_msg:type(), state()) ->
@@ -44,5 +46,6 @@
 ) -> {ok, jup_display:type()} | not_found.
 
 -optional_callbacks([
-    opt_spec/0
+    opt_spec/0,
+    deps/0
 ]).

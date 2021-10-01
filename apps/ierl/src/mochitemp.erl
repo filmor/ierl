@@ -22,9 +22,19 @@
 %% @doc Create temporary files and directories.
 
 -module(mochitemp).
--export([gettempdir/0]).
--export([mkdtemp/0, mkdtemp/3]).
--export([rmtempdir/1]).
+
+-ignore_xref([
+    gettempdir/0,
+    mkdtemp/0,
+    mkdtemp/3,
+    rmtempdir/1
+]).
+-export([
+    gettempdir/0,
+    mkdtemp/0,
+    mkdtemp/3,
+    rmtempdir/1
+]).
 %% -export([mkstemp/4]).
 -define(SAFE_CHARS, {
     $a,

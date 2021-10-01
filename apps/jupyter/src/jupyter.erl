@@ -1,7 +1,5 @@
 -module(jupyter).
 
--include("internal.hrl").
-
 -ignore_xref([
     start_kernel/4
 ]).

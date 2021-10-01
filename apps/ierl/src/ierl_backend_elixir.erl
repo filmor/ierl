@@ -1,5 +1,17 @@
 -module(ierl_backend_elixir).
 
+% Ignore all Elixir functions as xref has no way to find out about them
+-ignore_xref([
+    {'Elixir.IEx.Autocomplete', expand, 1},
+    {'Elixir.Exception', format, 2},
+    {'Elixir.Exception', message, 1},
+    {'Elixir.Exception', normalize, 2},
+    {'Elixir.Kernel', inspect, 1},
+    {'Elixir.Code', string_to_quoted, 1},
+    {'Elixir.Code', 'string_to_quoted!', 1},
+    {'Elixir.Code', eval_string, 2}
+]).
+
 -behaviour(jup_kernel_backend).
 
 -export([
@@ -32,7 +44,7 @@ opt_spec() ->
     }.
 
 language() ->
-    elixir.
+    <<"elixir">>.
 
 init(Args) ->
     case code:ensure_loaded(elixir) of

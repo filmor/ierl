@@ -1,13 +1,13 @@
 -module(ierl_util).
 
--export(
-    [
-        get_app_version/1,
-        simplify/1,
-        format_args/1,
-        find_span/2
-    ]
-).
+% Not used right now, but may be again in the future
+-ignore_xref([get_app_version/1]).
+-export([
+    get_app_version/1,
+    simplify/1,
+    format_args/1,
+    find_span/2
+]).
 
 -spec get_app_version(atom()) -> string().
 get_app_version(Name) ->

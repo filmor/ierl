@@ -28,7 +28,7 @@ opt_spec() ->
     }.
 
 language() ->
-    'common-lisp'.
+    <<"common-lisp">>.
 
 init(_Args) ->
     {ok, _} = application:ensure_all_started(lfe),
