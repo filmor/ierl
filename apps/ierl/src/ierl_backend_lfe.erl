@@ -32,7 +32,7 @@ language() ->
 
 init(_Args) ->
     {ok, _} = application:ensure_all_started(lfe),
-    #state{env = lfe_env:new()}.
+    #state{env = lfe_shell:new_state("lfe", [])}.
 
 deps() ->
     [ierl_versions].
@@ -60,12 +60,11 @@ execute(Code, _Msg, State) ->
         {Res, NewState} =
             lfe_shell:run_string(binary_to_list(Code), State#state.env),
 
-        NewBindings = element(2, NewState),
         Res1 = jup_util:ensure_binary(lfe_io_pretty:term(Res)),
 
         Counter1 = Counter + 1,
 
-        {{ok, Res1}, Counter1, State#state{env = NewBindings, counter = Counter1}}
+        {{ok, Res1}, Counter1, State#state{env = NewState, counter = Counter1}}
     catch
         Type:Reason:Stacktrace ->
             Stacktrace1 = format_stacktrace(Stacktrace),
