@@ -1,6 +1,6 @@
 {application, ierl, [
     {description, "Erlang jupyter frontend tool to install and run kernels"},
-    {vsn, "0.4.0"},
+    {vsn, "0.6.0"},
     {registered, []},
     {applications, [kernel, stdlib, jupyter, getopt, lfe]},
     {included_applications, []},
