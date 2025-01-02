@@ -71,7 +71,7 @@ create(Options) ->
 
     ok = file:write_file(
         filename:join([Root, "kernel.json"]),
-        jsx:encode(Spec, [{space, 1}, {indent, 2}])
+        json:encode(Spec)
     ),
 
     ok.

@@ -44,10 +44,10 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
 
     Res = #jup_msg{
         uuids = Uuids,
-        header = jsx:decode(Header, [return_maps]),
-        parent_header = jsx:decode(ParentHeader, [return_maps]),
-        metadata = jsx:decode(Metadata, [return_maps]),
-        content = jsx:decode(Content, [return_maps]),
+        header = json:decode(Header),
+        parent_header = json:decode(ParentHeader),
+        metadata = json:decode(Metadata),
+        content = json:decode(Content),
 
         extra_binaries = ExtraBinaries
     },
@@ -57,13 +57,13 @@ decode(MultipartMsg, {SignatureScheme, Key}) ->
 -spec encode(type(), key()) -> [binary()].
 encode(#jup_msg{} = Msg, {SignatureScheme, Key}) ->
     Ctx0 = crypto:mac_init(hmac, SignatureScheme, Key),
-    Header = jsx:encode(Msg#jup_msg.header),
+    Header = json_encode(Msg#jup_msg.header),
     Ctx1 = crypto:mac_update(Ctx0, Header),
-    ParentHeader = jsx:encode(Msg#jup_msg.parent_header),
+    ParentHeader = json_encode(Msg#jup_msg.parent_header),
     Ctx2 = crypto:mac_update(Ctx1, ParentHeader),
-    Metadata = jsx:encode(Msg#jup_msg.metadata),
+    Metadata = json_encode(Msg#jup_msg.metadata),
     Ctx3 = crypto:mac_update(Ctx2, Metadata),
-    Content = jsx:encode(Msg#jup_msg.content),
+    Content = json_encode(Msg#jup_msg.content),
     Ctx4 = crypto:mac_update(Ctx3, Content),
 
     Signature = jup_util:hexlify(crypto:mac_final(Ctx4)),
@@ -124,3 +124,6 @@ add_headers(Msg = #jup_msg{}, Parent, MessageType) ->
                 parent_header = Parent#jup_msg.header
             }
     end.
+
+json_encode(Msg) ->
+    jup_util:ensure_binary(json:encode(Msg)).

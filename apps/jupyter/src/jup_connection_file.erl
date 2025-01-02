@@ -13,7 +13,7 @@
 -spec parse(binary()) -> data().
 parse(Fn) ->
     {ok, Raw} = file:read_file(Fn),
-    JsonData = jsx:decode(Raw, [return_maps]),
+    JsonData = json:decode(Raw),
     V = fun(Name) ->
         maps:get(list_to_binary(Name), JsonData)
     end,
