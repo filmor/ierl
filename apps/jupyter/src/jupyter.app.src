@@ -2,7 +2,7 @@
     {description, "Library to create jupyter kernels in Erlang"},
     {vsn, "0.5.0"},
     {registered, []},
-    {applications, [kernel, stdlib, chumak, uuid, jsx, iso8601, gproc]},
+    {applications, [kernel, stdlib, chumak, uuid, json_polyfill, iso8601, gproc]},
     {included_applications, []},
     {env, []},
     {licenses, ["GPLv3"]},
