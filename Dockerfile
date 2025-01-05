@@ -10,9 +10,7 @@ RUN apt-get update && \
     dpkg -i erlang-solutions_1.0_all.deb && \
     rm erlang-solutions_1.0_all.deb && \
     apt-get update && \
-    apt-get install -y erlang elixir && \
-    mix local.hex --force && \
-    mix local.rebar --force
+    apt-get install -y erlang
 
 COPY / ierl_repo
 RUN chown $NB_USER -R ierl_repo
@@ -22,11 +20,9 @@ USER $NB_USER
 RUN git clone ierl_repo ierl && \
     cd ierl && \
     mkdir /home/$NB_USER/.ierl && \
-    mix deps.get && \
-# Build lfe explicitly for now
-    (cd deps/lfe && ~/.mix/rebar3 compile) && \
-    (cd apps/ierl && env MIX_ENV=prod mix escript.build) && \
-    cp apps/ierl/ierl /home/$NB_USER/.ierl/ierl.escript && \
+    ./_download_rebar3.sh && \
+    ./rebar3 escriptize && \
+    cp _build/default/bin/ierl /home/$NB_USER/.ierl/ierl.escript && \
     chmod +x /home/$NB_USER/.ierl/ierl.escript && \
     /home/$NB_USER/.ierl/ierl.escript install erlang --user && \
     /home/$NB_USER/.ierl/ierl.escript install lfe --user && \

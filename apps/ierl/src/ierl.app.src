@@ -2,10 +2,9 @@
     {description, "Erlang jupyter frontend tool to install and run kernels"},
     {vsn, "0.6.0"},
     {registered, []},
-    {applications, [kernel, stdlib, jupyter, getopt, lfe]},
+    {applications, [kernel, stdlib, jupyter, getopt, lfe, elixir, iex, mix, ex_unit, eex]},
     {included_applications, []},
     {env, []},
     {licenses, ["GPLv3"]},
-    {links, [{"Github", "https://github.com/filmor/ierl"}]},
-    {include_files, ["mix.exs"]}
+    {links, [{"Github", "https://github.com/filmor/ierl"}]}
 ]}.
