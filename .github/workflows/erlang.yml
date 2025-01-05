@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: erlef/setup-beam@v1
+      with:
+        otp-version: "27"
+    - uses: astral-sh/setup-uv@v5
+    - uses: actions/checkout@v4
+    - name: Get rebar3
+      run: ./_download_rebar3.sh
+    - name: Compile
+      run: ./rebar3 compile
+    - name: Run tests
+      run: ./rebar3 do eunit, ct
+    - name: Run kernel tests
+      run: ./test.sh
