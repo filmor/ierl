@@ -11,7 +11,3 @@ rebar3
 .pytest_cache/
 _checkouts*/
 __pycache__/
-
-deps/
-mix.lock
-.*.sw[po]

@@ -7,7 +7,7 @@ do
     escript _build/default/bin/ierl install $lang --user --replace --name ${lang}_test
 done
 
-pytest python-tests
+uvx --with jupyter_kernel_test pytest python-tests
 EXIT=$?
 
 for lang in erlang lfe elixir
